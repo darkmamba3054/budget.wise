@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Journal — BudgetWise</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .month-nav { display: flex; align-items: center; gap: 10px; }
+    .mnav-label { font-size: 16px; font-weight: 600; min-width: 130px; text-align: center; color: var(--text); }
+    .main-note { width: 100%; min-height: 120px; padding: 14px 16px; font-size: 14px; font-family: 'DM Sans', sans-serif; color: var(--text); background: var(--card); border: none; resize: vertical; line-height: 1.7; outline: none; }
+    .tags-wrap { padding: 10px 16px; border-top: 1px solid var(--border); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .mtag { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 12px; cursor: pointer; border: 1px solid var(--border); opacity: 0.5; transition: opacity 0.15s; }
+    .mtag.on { opacity: 1; font-weight: 500; }
+    .mtag-overtime   { background: var(--green-l);  color: var(--green);  border-color: var(--green-m); }
+    .mtag-short      { background: var(--amber-l);  color: var(--amber);  border-color: #f0c88a; }
+    .mtag-emergency  { background: var(--red-l);    color: var(--red);    border-color: #f5bbb4; }
+    .mtag-debt       { background: #e8f3fd;          color: #1a5fa8;       border-color: #b5d4f4; }
+    .mtag-savings    { background: var(--green-l);  color: var(--green);  border-color: var(--green-m); }
+    .mtag-medical    { background: var(--amber-l);  color: var(--amber);  border-color: #f0c88a; }
+    .entry { padding: 14px 16px; border-bottom: 1px solid var(--bg2); }
+    .entry:last-child { border-bottom: none; }
+    .entry-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .entry-date { font-size: 12px; color: var(--text3); }
+    .entry-text { font-size: 13px; color: var(--text); line-height: 1.6; }
+    .add-entry-wrap { padding: 12px 16px; border-top: 1px solid var(--border); background: var(--bg); }
+    .add-entry-row { display: flex; gap: 8px; align-items: flex-start; }
+    .add-entry-input { flex: 1; padding: 9px 12px; font-size: 13px; font-family: 'DM Sans', sans-serif; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--card); color: var(--text); resize: none; height: 38px; outline: none; }
+    .add-entry-input:focus { border-color: var(--green); }
+    .quick-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+    .qtag { padding: 3px 10px; border-radius: 99px; font-size: 11px; cursor: pointer; border: 1px solid var(--border); background: var(--card); color: var(--text2); font-family: 'DM Sans', sans-serif; }
+    .qtag.sel-overtime  { background: var(--green-l); color: var(--green);  border-color: var(--green-m); font-weight: 500; }
+    .qtag.sel-short     { background: var(--amber-l); color: var(--amber);  border-color: #f0c88a;        font-weight: 500; }
+    .qtag.sel-emergency { background: var(--red-l);   color: var(--red);    border-color: #f5bbb4;        font-weight: 500; }
+    .qtag.sel-debt      { background: #e8f3fd;          color: #1a5fa8;       border-color: #b5d4f4;       font-weight: 500; }
+    .qtag.sel-savings   { background: var(--green-l); color: var(--green);  border-color: var(--green-m); font-weight: 500; }
+    .del-btn { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 15px; opacity: 0.45; padding: 0; }
+    .del-btn:hover { opacity: 1; color: var(--red); }
+    .entry-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+    .etag { display: inline-block; padding: 1px 7px; border-radius: 99px; font-size: 10px; font-weight: 500; }
+  </style>
+</head>
+<body>
+<script src="nav.js"></script>
+<div class="page">
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px;">
+    <div class="page-header" style="margin-bottom:0;">
+      <h1>Journal</h1>
+      <p>Monthly notes and a running log of financial events.</p>
+    </div>
+    <div class="month-nav">
+      <button class="btn btn-outline btn-sm" onclick="changeMonth(-1)">&#8592; Prev</button>
+      <span class="mnav-label" id="month-label"></span>
+      <button class="btn btn-outline btn-sm" onclick="changeMonth(1)">Next &#8594;</button>
+    </div>
+  </div>
+
+  <div class="grid-3" style="margin-bottom:20px;" id="month-stats"></div>
+
+  <div class="card" style="margin-bottom:20px;">
+    <div class="section-header" style="padding:16px 16px 0; margin-bottom:0;">
+      <h2>Monthly summary</h2>
+      <span style="font-size:12px; color:var(--text3);">How did this month go overall?</span>
+    </div>
+    <textarea class="main-note" id="main-note" placeholder="Write a summary — what went well, what was tough, any big financial moments..."></textarea>
+    <div class="tags-wrap">
+      <span style="font-size:11px; color:var(--text3); margin-right:4px;">Tag this month:</span>
+      <span class="mtag mtag-overtime"  id="mtag-overtime"  onclick="toggleMonthTag('overtime')">💪 Overtime</span>
+      <span class="mtag mtag-short"     id="mtag-short"     onclick="toggleMonthTag('short')">📉 Short check</span>
+      <span class="mtag mtag-emergency" id="mtag-emergency" onclick="toggleMonthTag('emergency')">🚨 Emergency</span>
+      <span class="mtag mtag-debt"      id="mtag-debt"      onclick="toggleMonthTag('debt')">✓ Debt payment</span>
+      <span class="mtag mtag-savings"   id="mtag-savings"   onclick="toggleMonthTag('savings')">🐖 Savings goal</span>
+      <span class="mtag mtag-medical"   id="mtag-medical"   onclick="toggleMonthTag('medical')">🏥 Medical</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-header" style="padding:16px 16px 0; margin-bottom:0;">
+      <h2>Event log</h2>
+      <span style="font-size:12px; color:var(--text3);">Quick notes as things happen</span>
+    </div>
+    <div id="entries-list"></div>
+    <div class="add-entry-wrap">
+      <div class="add-entry-row">
+        <textarea class="add-entry-input" id="new-entry" placeholder="Log a call with a collector, a purchase decision, a win..."></textarea>
+        <button class="btn btn-primary" onclick="addEntry()">Add note</button>
+      </div>
+      <div class="quick-tags" id="quick-tags"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  let currentMonth = 4, currentYear = 2026;
+  let selectedEntryTags = [];
+
+  const allTags = [
+    { key:'overtime',  label:'Overtime',         bg:'var(--green-l)', color:'var(--green)' },
+    { key:'short',     label:'Short check',       bg:'var(--amber-l)', color:'var(--amber)' },
+    { key:'emergency', label:'Emergency',         bg:'var(--red-l)',   color:'var(--red)'   },
+    { key:'debt',      label:'Debt payment',      bg:'#e8f3fd',        color:'#1a5fa8'      },
+    { key:'savings',   label:'Savings goal',      bg:'var(--green-l)', color:'var(--green)' },
+  ];
+
+  const journalData = {
+    '2026-5': {
+      note: 'Tough month with the car payment but held the budget together. Made first contact with Midland Credit about the Credit One account.',
+      tags: ['debt'],
+      entries: [
+        { date:'May 14', text:'Called Midland Credit Management about Credit One Bank ($698). They offered $400. Countered with $150 — they said they\'d follow up.', tags:['debt'] },
+        { date:'May 8',  text:'Car payment split across both paychecks successfully. Balance looks okay.', tags:[] },
+        { date:'May 1',  text:'Started the month with $450. Bills hit on the 1st — holding steady.', tags:[] },
+      ]
+    },
+    '2026-4': {
+      note: 'April was tight — unexpected grocery spike. Otherwise stable.',
+      tags: ['short'],
+      entries: [
+        { date:'Apr 28', text:'Called Credit One — no answer. Left voicemail.', tags:['debt'] },
+      ]
+    }
+  };
+
+  function key() { return `${currentYear}-${currentMonth+1}`; }
+  function getData() { if (!journalData[key()]) journalData[key()] = {note:'',tags:[],entries:[]}; return journalData[key()]; }
+
+  function changeMonth(dir) {
+    currentMonth += dir;
+    if (currentMonth > 11) { currentMonth=0; currentYear++; }
+    if (currentMonth < 0)  { currentMonth=11; currentYear--; }
+    selectedEntryTags = [];
+    render();
+  }
+
+  function toggleMonthTag(t) {
+    const d = getData(), idx = d.tags.indexOf(t);
+    if (idx===-1) d.tags.push(t); else d.tags.splice(idx,1);
+    renderMonthTags();
+  }
+
+  function toggleEntryTag(t) {
+    const idx = selectedEntryTags.indexOf(t);
+    if (idx===-1) selectedEntryTags.push(t); else selectedEntryTags.splice(idx,1);
+    renderQuickTags();
+  }
+
+  function addEntry() {
+    const text = document.getElementById('new-entry').value.trim();
+    if (!text) return;
+    const today = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    getData().entries.unshift({date:today,text,tags:[...selectedEntryTags]});
+    document.getElementById('new-entry').value='';
+    selectedEntryTags=[];
+    renderEntries();
+    renderQuickTags();
+    renderStats();
+  }
+
+  function removeEntry(i) { getData().entries.splice(i,1); renderEntries(); renderStats(); }
+  function saveNote()     { getData().note = document.getElementById('main-note').value; }
+
+  function render() {
+    document.getElementById('month-label').textContent = `${monthNames[currentMonth]} ${currentYear}`;
+    const d = getData();
+    document.getElementById('main-note').value = d.note;
+    document.getElementById('main-note').oninput = saveNote;
+    renderStats();
+    renderMonthTags();
+    renderEntries();
+    renderQuickTags();
+  }
+
+  function renderStats() {
+    const d = getData();
+    document.getElementById('month-stats').innerHTML = `
+      <div class="card"><div class="card-title">Entries this month</div><div class="card-value">${d.entries.length}</div></div>
+      <div class="card"><div class="card-title">Month tags</div><div class="card-value" style="font-size:18px;">${d.tags.length > 0 ? d.tags.join(', ') : 'None'}</div></div>
+      <div class="card"><div class="card-title">Last entry</div><div class="card-value" style="font-size:18px;">${d.entries.length ? d.entries[0].date : '—'}</div></div>
+    `;
+  }
+
+  function renderMonthTags() {
+    const d = getData();
+    ['overtime','short','emergency','debt','savings','medical'].forEach(t => {
+      const el = document.getElementById('mtag-'+t);
+      if (el) el.classList.toggle('on', d.tags.includes(t));
+    });
+  }
+
+  function renderEntries() {
+    const d = getData();
+    if (d.entries.length === 0) {
+      document.getElementById('entries-list').innerHTML = '<div style="padding:20px 16px;font-size:13px;color:var(--text3);">No entries yet — add your first note below.</div>';
+      return;
+    }
+    document.getElementById('entries-list').innerHTML = d.entries.map((e,i) => {
+      const tagHtml = (e.tags||[]).map(t => {
+        const tag = allTags.find(a=>a.key===t);
+        return tag ? `<span class="etag" style="background:${tag.bg};color:${tag.color};">${tag.label}</span>` : '';
+      }).join('');
+      return `<div class="entry">
+        <div class="entry-meta">
+          <span class="entry-date">${e.date}</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="entry-tags">${tagHtml}</div>
+            <button class="del-btn" onclick="removeEntry(${i})">×</button>
+          </div>
+        </div>
+        <div class="entry-text">${e.text}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderQuickTags() {
+    document.getElementById('quick-tags').innerHTML = allTags.map(t =>
+      `<button class="qtag ${selectedEntryTags.includes(t.key)?'sel-'+t.key:''}" onclick="toggleEntryTag('${t.key}')">${t.label}</button>`
+    ).join('');
+  }
+
+  render();
+</script>
+</body>
+</html>

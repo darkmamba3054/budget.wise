@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debt Settlement — BudgetWise</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .debt-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 10px; overflow: hidden; }
+    .debt-header { display: grid; grid-template-columns: 1fr 90px 90px 110px 130px 50px; gap: 8px; align-items: center; padding: 13px 16px; cursor: pointer; }
+    .debt-header:hover { background: var(--bg); }
+    .debt-name { font-weight: 500; font-size: 14px; color: var(--text); }
+    .debt-agency { font-size: 11px; color: var(--text3); margin-top: 2px; }
+    .debt-detail { display: none; border-top: 1px solid var(--border); padding: 18px; background: var(--bg); }
+    .debt-detail.open { display: block; }
+    .col-head { display: grid; grid-template-columns: 1fr 90px 90px 110px 130px 50px; gap: 8px; padding: 8px 16px; font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; background: var(--bg2); border-radius: var(--radius) var(--radius) 0 0; border: 1px solid var(--border); border-bottom: none; }
+    .controls { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+    .filter-btn { padding: 6px 14px; border-radius: 99px; font-size: 12px; font-weight: 500; border: 1px solid var(--border); background: var(--card); color: var(--text2); cursor: pointer; font-family: 'DM Sans', sans-serif; }
+    .filter-btn.active { background: var(--green); color: white; border-color: var(--green); }
+    .savings-note { font-size: 11px; color: var(--green); margin-top: 3px; }
+    .tip-box { background: var(--amber-l); border: 1px solid #f0c88a; border-radius: var(--radius-sm); padding: 12px 16px; font-size: 13px; color: var(--amber); margin-bottom: 20px; line-height: 1.6; }
+    .log-entry { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 8px; }
+    .log-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+    .add-log { display: flex; gap: 8px; margin-top: 10px; align-items: flex-start; }
+    .add-log textarea { flex: 1; padding: 8px 12px; font-size: 13px; font-family: 'DM Sans', sans-serif; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--card); color: var(--text); resize: none; height: 38px; outline: none; }
+    .inline-field { padding: 8px 12px; font-size: 13px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--card); font-family: 'DM Sans', sans-serif; color: var(--text); width: 100%; outline: none; }
+    .inline-field:focus { border-color: var(--green); }
+  </style>
+</head>
+<body>
+<script src="nav.js"></script>
+<div class="page">
+  <div class="page-header">
+    <h1>Debt Settlement</h1>
+    <p>Track negotiations, offers, and contact history for each collection account.</p>
+  </div>
+  <div class="tip-box">💡 <strong>Settlement tip:</strong> Collection debt is often settleable for 40–60 cents on the dollar, sometimes less if the debt is old. Always get any agreement in writing before paying. Start low — you can always go up.
+  </div>
+  <div class="grid-3" style="margin-bottom:20px;" id="stats"></div>
+  <div class="controls">
+    <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+    <button class="filter-btn" onclick="setFilter('negotiating',this)">Negotiating</button>
+    <button class="filter-btn" onclick="setFilter('call',this)">Need to call</button>
+    <button class="filter-btn" onclick="setFilter('settled',this)">Settled</button>
+  </div>
+  <div class="col-head">
+    <div>Debt / creditor</div><div>Balance</div><div>Our offer</div><div>Their counter</div><div>Status</div><div></div>
+  </div>
+  <div id="debt-list"></div>
+</div>
+<script>
+  let debts = [
+    { name:'WEBBANK/FINGERHUT', agency:'Unknown', balance:144, ourOffer:'', theirCounter:'', status:'not-contacted', call:true, log:[], notes:'' },
+    { name:'EMPOWER Electric', agency:'Unknown', balance:190, ourOffer:'', theirCounter:'', status:'not-contacted', call:false, log:[], notes:'' },
+    { name:'Discount Power', agency:'TRANSWORLD System', balance:230, ourOffer:'', theirCounter:'', status:'not-contacted', call:true, log:[], notes:'' },
+    { name:'Helzeberg Diamond', agency:'Unknown', balance:300, ourOffer:'', theirCounter:'', status:'not-contacted', call:false, log:[], notes:'' },
+    { name:'Capital One CC', agency:'Unknown', balance:303, ourOffer:'', theirCounter:'', status:'not-contacted', call:true, log:[], notes:'' },
+    { name:'Synchrony Bank', agency:'Portfolio Recovery', balance:327, ourOffer:'', theirCounter:'', status:'not-contacted', call:false, log:[], notes:'' },
+    { name:'Synchrony Bank 2', agency:'Portfolio Recovery', balance:417, ourOffer:'', theirCounter:'', status:'not-contacted', call:false, log:[], notes:'' },
+    { name:'Progressive Insurance', agency:'Caine and Weiner', balance:454, ourOffer:'', theirCounter:'', status:'not-contacted', call:false, log:[], notes:'' },
+    { name:'Celtic Bank', agency:'Spring Oaks Capital', balance:489, ourOffer:'', theirCounter:'', status:'not-contacted', call:false, log:[], notes:'' },
+    { name:'Google Credit Card', agency:'Unknown', balance:584, ourOffer:'', theirCounter:'', status:'not-contacted', call:false, log:[], notes:'' },
+    { name:'Wayfair', agency:'Unknown', balance:596, ourOffer:'', theirCounter:'', status:'not-contacted', call:false, log:[], notes:'' },
+    { name:'Credit One Bank', agency:'Midland Credit Mgmt', balance:698, ourOffer:'150', theirCounter:'400', status:'negotiating', call:false, log:[{ date:'May 14', type:'Called', text:'Offered $150. They countered at $400. Following up.' }], notes:'Ask for supervisor next time' },
+    { name:'First Premier Bank', agency:'Unknown', balance:711, ourOffer:'', theirCounter:'', status:'not-contacted', call:false, log:[], notes:'' },
+    { name:'Aspire Credit Card', agency:'Jefferson Capital', balance:971, ourOffer:'', theirCounter:'', status:'not-contacted', call:false, log:[], notes:'' },
+    { name:'Credit First', agency:'Unknown', balance:1112, ourOffer:'', theirCounter:'', status:'not-contacted', call:false, log:[], notes:'' },
+    { name:'Spring Oaks (Helzeberg?)', agency:'Spring Oaks Capital', balance:1226, ourOffer:'', theirCounter:'', status:'not-contacted', call:false, log:[], notes:'' },
+    { name:'First Premier Bank 2', agency:'Unknown', balance:1636, ourOffer:'', theirCounter:'', status:'not-contacted', call:false, log:[], notes:'' },
+    { name:'Synchrony Bank 3', agency:'Portfolio Recovery', balance:1873, ourOffer:'', theirCounter:'', status:'not-contacted', call:false, log:[], notes:'' },
+    { name:'Republic Bank Trust', agency:'NCB Management', balance:2200, ourOffer:'', theirCounter:'', status:'not-contacted', call:false, log:[], notes:'' },
+    { name:'Verizon Wireless', agency:'Unknown', balance:3000, ourOffer:'', theirCounter:'', status:'not-contacted', call:false, log:[], notes:'' },
+    { name:'Capital One', agency:'Unknown', balance:3019, ourOffer:'', theirCounter:'', status:'not-contacted', call:false, log:[], notes:'' },
+    { name:'Car Loan', agency:'GM Financial', balance:46248, ourOffer:'', theirCounter:'', status:'not-contacted', call:false, log:[], notes:'' },
+  ];
+  let expanded = null, currentFilter = 'all';
+  const statusOptions = {
+    'not-contacted':{ label:'Not contacted', cls:'badge-gray'  },
+    'negotiating':  { label:'Negotiating',   cls:'badge-amber' },
+    'offer-made':   { label:'Offer made',     cls:'badge-amber' },
+    'agreed':       { label:'Agreed',         cls:'badge-green' },
+    'settled':      { label:'Settled ✓',      cls:'badge-green' },
+    'disputed':     { label:'Disputed',       cls:'badge-red'   },
+  };
+  function fmt(n) { return '$' + Number(n).toLocaleString('en-US',{minimumFractionDigits:0}); }
+  function renderStats() {
+    const total    = debts.reduce((s,d) => s+d.balance, 0);
+    const neg      = debts.filter(d => ['negotiating','offer-made','agreed'].includes(d.status)).length;
+    const savings  = debts.filter(d => d.ourOffer).reduce((s,d) => s+(d.balance-parseFloat(d.ourOffer)), 0);
+    document.getElementById('stats').innerHTML = `
+      <div class="card"><div class="card-title">Total in collections</div><div class="card-value red">${fmt(total)}</div><div class="card-sub">${debts.length} accounts</div></div>
+      <div class="card"><div class="card-title">Negotiating</div><div class="card-value amber">${neg}</div><div class="card-sub">Active negotiations</div></div>
+      <div class="card"><div class="card-title">Potential savings</div><div class="card-value green">${fmt(savings)}</div><div class="card-sub">If all offers accepted</div></div>`;
+  }
+  function setFilter(f, btn) {
+    currentFilter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    render();
+  }
+  function render() {
+    let list = debts;
+    if (currentFilter==='negotiating') list = debts.filter(d=>['negotiating','offer-made','agreed'].includes(d.status));
+    if (currentFilter==='call')        list = debts.filter(d=>d.call);
+    if (currentFilter==='settled')     list = debts.filter(d=>d.status==='settled');
+    document.getElementById('debt-list').innerHTML = list.map(d => {
+      const i = debts.indexOf(d);
+      const isOpen = expanded === i;
+      const st = statusOptions[d.status] || statusOptions['not-contacted'];
+      const offerAmt = d.ourOffer ? parseFloat(d.ourOffer) : null;
+      const savePct  = offerAmt ? Math.round((1-offerAmt/d.balance)*100) : null;
+      return `<div class="debt-card">
+        <div class="debt-header" onclick="toggleExpand(${i})">
+          <div><div class="debt-name">${d.name}</div><div class="debt-agency">${d.agency}</div></div>
+          <div style="font-weight:600;">${fmt(d.balance)}</div>
+          <div><div style="font-weight:500;color:var(--green);">${offerAmt?fmt(offerAmt):'—'}</div>${savePct?`<div class="savings-note">Saves ${savePct}%</div>`:''}</div>
+          <div style="color:var(--text2);">${d.theirCounter?fmt(parseFloat(d.theirCounter)):'—'}</div>
+          <div><span class="badge ${st.cls}">${st.label}</span></div>
+          <div style="color:var(--text3);text-align:right;">${isOpen?'▲':'▼'}</div>
+        </div>
+        <div class="debt-detail ${isOpen?'open':''}">
+          <div class="form-row" style="margin-bottom:14px;">
+            <div class="form-group"><label>Our offer ($)</label><input type="number" class="inline-field" placeholder="e.g. 86" value="${d.ourOffer}" oninput="debts[${i}].ourOffer=this.value;renderStats();">${savePct?`<div class="savings-note" style="margin-top:4px;">Save ${savePct}% = ${fmt(d.balance-(offerAmt||0))}</div>`:''}</div>
+            <div class="form-group"><label>Their counter ($)</label><input type="number" class="inline-field" placeholder="What they said" value="${d.theirCounter}" oninput="debts[${i}].theirCounter=this.value;"></div>
+          </div>
+          <div class="form-row" style="margin-bottom:16px;">
+            <div class="form-group"><label>Status</label><select class="inline-field" onchange="debts[${i}].status=this.value;render();renderStats();">${Object.entries(statusOptions).map(([k,v])=>`<option value="${k}" ${d.status===k?'selected':''}>${v.label}</option>`).join('')}</select></div>
+            <div class="form-group"><label>Notes</label><input type="text" class="inline-field" placeholder="e.g. Ask for supervisor" value="${d.notes}" oninput="debts[${i}].notes=this.value;"></div>
+          </div>
+          <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Contact log</div>
+          ${d.log.length===0?'<p style="font-size:13px;color:var(--text3);margin-bottom:10px;">No contact logged yet.</p>':d.log.map(l=>`<div class="log-entry"><div class="log-meta"><span class="badge badge-green">${l.type}</span><span style="font-size:12px;color:var(--text3);">${l.date}</span></div><div style="font-size:13px;color:var(--text);line-height:1.6;">${l.text}</div></div>`).join('')}
+          <div class="add-log">
+            <select id="log-type-${i}" class="inline-field" style="width:150px;"><option>Called</option><option>They called</option><option>Emailed</option><option>Letter sent</option><option>Agreement reached</option></select>
+            <textarea id="log-note-${i}" placeholder="What happened?"></textarea>
+            <button class="btn btn-primary btn-sm" onclick="addLog(${i})">Log it</button>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
+            <button class="btn btn-outline btn-sm" onclick="debts[${i}].status='settled';render();renderStats();">Mark settled ✓</button>
+            <button class="btn btn-outline btn-sm" onclick="debts[${i}].call=!debts[${i}].call;render();">${d.call?'Remove call flag':'📞 Flag to call'}</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  function toggleExpand(i) { expanded = expanded===i?null:i; render(); }
+  function addLog(i) {
+    const type = document.getElementById(`log-type-${i}`).value;
+    const text = document.getElementById(`log-note-${i}`).value.trim();
+    if (!text) return;
+    const today = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    debts[i].log.unshift({date:today,type,text});
+    render();
+  }
+  renderStats(); render();
+</script>
+</body>
+</html>

@@ -8,7 +8,12 @@
     { href: 'checker.html',  label: 'Purchase Checker' },
     { href: 'calendar.html',  label: 'Calendar' },
     { href: 'paycheck.html',  label: 'Paycheck Simulator' },
-    { href: 'debt.html',      label: 'Debt Tracker' },
+    { href: 'debt.html',        label: 'Debt Tracker' },
+    { href: 'settlement.html',  label: 'Settlement' },
+    { href: 'networth.html',    label: 'Net Worth' },
+    { href: 'trends.html',      label: 'Spending Trends' },
+    { href: 'journal.html',      label: 'Journal' },
+    { href: 'tracker.html',      label: 'YTD Tracker' },
   ];
 
   const current = location.pathname.split('/').pop() || 'index.html';

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spending Trends — BudgetWise</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    .month-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+    .mtab { padding: 5px 12px; border-radius: 99px; font-size: 12px; cursor: pointer; border: 1px solid var(--border); background: var(--card); color: var(--text2); font-family: 'DM Sans', sans-serif; }
+    .mtab.active { background: var(--green); color: white; border-color: var(--green); }
+    .insight-box { background: var(--green-l); border: 1px solid var(--green-m); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 13px; color: #2a5c3f; margin: 0 0 16px; line-height: 1.6; }
+    .chart-wrap { position: relative; height: 200px; margin: 16px 0; }
+    .cat-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; padding: 16px; }
+    .cat-item { }
+    .cat-meta { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px; font-size: 13px; }
+    .cat-name { font-weight: 500; color: var(--text); display: flex; align-items: center; gap: 6px; }
+    .cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .cat-right { text-align: right; }
+    .cat-amt { font-weight: 600; }
+    .cat-change { font-size: 11px; }
+    .change-up   { color: var(--red);   }
+    .change-down { color: var(--green); }
+    .prog-track { height: 5px; background: var(--bg2); border-radius: 99px; overflow: hidden; }
+    .prog-fill  { height: 100%; border-radius: 99px; }
+  </style>
+</head>
+<body>
+<script src="nav.js"></script>
+<div class="page">
+  <div class="page-header">
+    <h1>Spending Trends</h1>
+    <p>Month over month breakdown of where your money goes.</p>
+  </div>
+
+  <div class="grid-3" style="margin-bottom:20px;" id="top-stats"></div>
+
+  <div class="card" style="margin-bottom:20px;">
+    <div class="section-header">
+      <h2>Monthly spending</h2>
+      <div class="month-tabs" id="month-tabs"></div>
+    </div>
+    <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+    <div class="insight-box" id="insight"></div>
+  </div>
+
+  <div class="card">
+    <div class="section-header">
+      <h2>Category breakdown</h2>
+      <span id="cat-label" style="font-size:13px; color:var(--text2);"></span>
+    </div>
+    <div class="cat-grid" id="cat-grid"></div>
+  </div>
+</div>
+
+<script>
+  const categories = [
+    { name:'Housing',       color:'#c0442a' },
+    { name:'Food',          color:'#3a7d5a' },
+    { name:'Transport',     color:'#c97b2e' },
+    { name:'Subscriptions', color:'#185FA5' },
+    { name:'Entertainment', color:'#7F77DD' },
+    { name:'Health',        color:'#854F0B' },
+    { name:'Giving',        color:'#3B6D11' },
+    { name:'Other',         color:'#5F5E5A' },
+  ];
+  const months = [
+    { label:'Jan', data:{ Housing:900, Food:420, Transport:180, Subscriptions:38, Entertainment:60,  Health:0,   Giving:1000, Other:80  } },
+    { label:'Feb', data:{ Housing:900, Food:380, Transport:210, Subscriptions:38, Entertainment:45,  Health:120, Giving:1000, Other:50  } },
+    { label:'Mar', data:{ Housing:900, Food:450, Transport:195, Subscriptions:38, Entertainment:80,  Health:0,   Giving:1000, Other:110 } },
+    { label:'Apr', data:{ Housing:900, Food:410, Transport:220, Subscriptions:38, Entertainment:30,  Health:60,  Giving:1000, Other:70  } },
+    { label:'May', data:{ Housing:900, Food:248, Transport:96,  Subscriptions:38, Entertainment:0,   Health:19,  Giving:0,    Other:0   } },
+  ];
+
+  let selectedMonth = 4;
+  let barChartInstance = null;
+
+  function total(m) { return Object.values(m.data).reduce((s,v)=>s+v,0); }
+  function fmt(n)   { return '$'+Math.round(n).toLocaleString(); }
+
+  function renderStats() {
+    const cur  = total(months[selectedMonth]);
+    const prev = selectedMonth > 0 ? total(months[selectedMonth-1]) : null;
+    const diff = prev !== null ? cur - prev : null;
+    const avg  = Math.round(months.slice(0,selectedMonth).reduce((s,m)=>s+total(m),0) / Math.max(selectedMonth,1));
+    const topCat = categories.slice().sort((a,b)=>(months[selectedMonth].data[b.name]||0)-(months[selectedMonth].data[a.name]||0))[0];
+    document.getElementById('top-stats').innerHTML = `
+      <div class="card"><div class="card-title">This month</div><div class="card-value amber">${fmt(cur)}</div><div class="card-sub">Total spending</div></div>
+      <div class="card"><div class="card-title">vs last month</div><div class="card-value ${diff===null?'':diff>0?'red':'green'}">${diff===null?'—':(diff>0?'+':'')+fmt(diff)}</div><div class="card-sub">${diff===null?'No prior data':diff>0?'More than last month':'Less than last month'}</div></div>
+      <div class="card"><div class="card-title">Top category</div><div class="card-value" style="font-size:18px;">${topCat.name}</div><div class="card-sub">${fmt(months[selectedMonth].data[topCat.name]||0)} this month</div></div>
+    `;
+  }
+
+  function renderChart() {
+    document.getElementById('month-tabs').innerHTML = months.map((m,i)=>
+      `<button class="mtab ${i===selectedMonth?'active':''}" onclick="selectMonth(${i})">${m.label}</button>`
+    ).join('');
+
+    const cur  = total(months[selectedMonth]);
+    const prev = selectedMonth > 0 ? total(months[selectedMonth-1]) : null;
+    const diff = prev !== null ? cur - prev : null;
+    const topCat = categories.slice().sort((a,b)=>(months[selectedMonth].data[b.name]||0)-(months[selectedMonth].data[a.name]||0))[0];
+    document.getElementById('insight').innerHTML = `<strong>${months[selectedMonth].label}:</strong> You spent ${fmt(cur)} total. Biggest category: <strong>${topCat.name} (${fmt(months[selectedMonth].data[topCat.name]||0)})</strong>.${diff!==null?' That\'s <strong>'+(diff>0?'+':'')+fmt(diff)+'</strong> vs last month.':''}`;
+
+    if (barChartInstance) barChartInstance.destroy();
+    barChartInstance = new Chart(document.getElementById('barChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: months.map(m=>m.label),
+        datasets: [{
+          data: months.map(m=>total(m)),
+          backgroundColor: months.map((_,i) => i===selectedMonth ? '#3a7d5a' : '#ddd6cc'),
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend:{ display:false }, tooltip:{ callbacks:{ label: ctx => ' '+fmt(ctx.raw) } } },
+        scales: {
+          x: { grid:{ display:false }, border:{ display:false } },
+          y: { grid:{ color:'#f0ece6' }, border:{ display:false }, ticks:{ callback: v => '$'+Math.round(v/1000)+'k' } }
+        },
+        onClick: (_, els) => { if(els.length) selectMonth(els[0].index); }
+      }
+    });
+  }
+
+  function renderCats() {
+    const cur  = months[selectedMonth].data;
+    const prev = selectedMonth > 0 ? months[selectedMonth-1].data : null;
+    const maxAmt = Math.max(...categories.map(c=>cur[c.name]||0),1);
+    document.getElementById('cat-label').textContent = months[selectedMonth].label + ' breakdown';
+    document.getElementById('cat-grid').innerHTML = categories.map(c => {
+      const amt  = cur[c.name]  || 0;
+      const pamt = prev ? (prev[c.name]||0) : null;
+      const diff = pamt !== null ? amt - pamt : null;
+      const pct  = Math.round((amt/maxAmt)*100);
+      return `<div class="cat-item">
+        <div class="cat-meta">
+          <div class="cat-name"><div class="cat-dot" style="background:${c.color};"></div>${c.name}</div>
+          <div class="cat-right">
+            <div class="cat-amt">${fmt(amt)}</div>
+            ${diff!==null&&diff!==0?`<div class="cat-change ${diff>0?'change-up':'change-down'}">${diff>0?'↑':'↓'} ${fmt(Math.abs(diff))}</div>`:''}
+          </div>
+        </div>
+        <div class="prog-track"><div class="prog-fill" style="width:${pct}%;background:${c.color};"></div></div>
+      </div>`;
+    }).join('');
+  }
+
+  function selectMonth(i) { selectedMonth=i; renderStats(); renderChart(); renderCats(); }
+  renderStats(); renderChart(); renderCats();
+</script>
+</body>
+</html>
