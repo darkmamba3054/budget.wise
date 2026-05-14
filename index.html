@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — BudgetWise</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    .tip { background: var(--green-l); border: 1px solid var(--green-m); border-radius: var(--radius); padding: 14px 18px; display: flex; align-items: flex-start; gap: 12px; margin-bottom: 20px; }
+    .tip-icon { font-size: 18px; flex-shrink: 0; }
+    .tip-text { font-size: 13px; color: #2a5c3f; line-height: 1.5; }
+    .tip-text strong { font-weight: 600; }
+    .month-btn { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 5px 12px; font-size: 13px; cursor: pointer; color: var(--text); font-family: 'DM Sans', sans-serif; }
+    .cat-meta { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; }
+    .chart-wrap { position: relative; height: 200px; }
+    .debt-legend { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+    .debt-leg-item { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+    .debt-leg-left { display: flex; align-items: center; gap: 8px; }
+    .debt-leg-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+<script src="nav.js"></script>
+
+<div class="page">
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
+    <div class="page-header" style="margin-bottom:0;">
+      <h1>Good morning ☁️</h1>
+      <p>Here's where your money stands this month.</p>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px; margin-top:6px;">
+      <button class="month-btn">← Apr</button>
+      <span style="font-size:14px; font-weight:600; min-width:85px; text-align:center;">May 2026</span>
+      <button class="month-btn">Jun →</button>
+    </div>
+  </div>
+
+  <div class="tip">
+    <div class="tip-icon">💡</div>
+    <div class="tip-text"><strong>You're on track.</strong> At this rate you'll have $882 left at month end. Consider moving some toward your Emergency Fund savings goal.</div>
+  </div>
+
+  <!-- Budget cards -->
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title">Monthly budget</div>
+      <div class="card-value">$2,000</div>
+      <div class="card-sub">Set for May 2026</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Spent so far</div>
+      <div class="card-value amber">$1,118</div>
+      <div class="card-sub">55% of budget used</div>
+      <div class="progress-wrap">
+        <div class="progress-track"><div class="progress-fill amber" style="width:55%"></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Remaining</div>
+      <div class="card-value green">$882</div>
+      <div class="card-sub">17 days left this month</div>
+    </div>
+  </div>
+
+  <!-- Spending + Upcoming bills -->
+  <div class="grid-2">
+    <div>
+      <div class="section-header"><h2>Spending by category</h2></div>
+      <div class="card">
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <div>
+            <div class="cat-meta"><span style="font-weight:500;">Housing</span><span style="color:var(--text2);">$900 / $900</span></div>
+            <div class="progress-track"><div class="progress-fill red" style="width:100%"></div></div>
+          </div>
+          <div>
+            <div class="cat-meta"><span style="font-weight:500;">Food & Groceries</span><span style="color:var(--text2);">$180 / $300</span></div>
+            <div class="progress-track"><div class="progress-fill" style="width:60%"></div></div>
+          </div>
+          <div>
+            <div class="cat-meta"><span style="font-weight:500;">Transport</span><span style="color:var(--text2);">$48 / $150</span></div>
+            <div class="progress-track"><div class="progress-fill" style="width:32%"></div></div>
+          </div>
+          <div>
+            <div class="cat-meta"><span style="font-weight:500;">Subscriptions</span><span style="color:var(--text2);">$38 / $60</span></div>
+            <div class="progress-track"><div class="progress-fill amber" style="width:63%"></div></div>
+          </div>
+          <div>
+            <div class="cat-meta"><span style="font-weight:500;">Entertainment</span><span style="color:var(--text2);">$0 / $200</span></div>
+            <div class="progress-track"><div class="progress-fill" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-header">
+        <h2>Upcoming bills</h2>
+        <a href="bills.html" class="btn btn-outline btn-sm">View all bills</a>
+      </div>
+      <div class="card">
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:12px; border-bottom:1px solid var(--bg2);">
+            <div><div style="font-weight:500; font-size:13px;">Car Payment</div><div style="font-size:12px; color:var(--text3);">Due May 8</div></div>
+            <div style="display:flex; align-items:center; gap:8px;"><span style="font-weight:600;">$1,015</span><span class="badge badge-red">Due soon</span></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:12px; border-bottom:1px solid var(--bg2);">
+            <div><div style="font-weight:500; font-size:13px;">Cell Phone</div><div style="font-size:12px; color:var(--text3);">Due May 15</div></div>
+            <div style="display:flex; align-items:center; gap:8px;"><span style="font-weight:600;">$160</span><span class="badge badge-amber">Upcoming</span></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:12px; border-bottom:1px solid var(--bg2);">
+            <div><div style="font-weight:500; font-size:13px;">Internet + Insurance</div><div style="font-size:12px; color:var(--text3);">Due May 21</div></div>
+            <div style="display:flex; align-items:center; gap:8px;"><span style="font-weight:600;">$562</span><span class="badge badge-gray">Later</span></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div><div style="font-weight:500; font-size:13px;">Diapers · Tithe · Gas · Groceries</div><div style="font-size:12px; color:var(--text3);">Floating — no fixed date</div></div>
+            <div style="display:flex; align-items:center; gap:8px;"><span style="font-weight:600;">$1,890</span><span class="badge badge-gray">Estimated</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Debt snapshot -->
+  <div class="section-header">
+    <h2>Debt snapshot</h2>
+    <a href="debt.html" class="btn btn-outline btn-sm">View debt tracker</a>
+  </div>
+  <div class="grid-2" style="margin-bottom:24px;">
+    <div class="card">
+      <div class="card-title">Debt by group</div>
+      <div class="chart-wrap">
+        <canvas id="debtChart"></canvas>
+      </div>
+      <div class="debt-legend" id="debt-legend"></div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:14px;">
+      <div class="card">
+        <div class="card-title">Total debt</div>
+        <div class="card-value red">$66,283</div>
+        <div class="card-sub">Across 22 accounts</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Excl. car loan</div>
+        <div class="card-value amber">$20,035</div>
+        <div class="card-sub">21 collection accounts</div>
+      </div>
+      <div class="card" style="background:var(--green-l); border-color:var(--green-m);">
+        <div class="card-title" style="color:var(--green);">❄️ Snowball target</div>
+        <div class="card-value green">$144</div>
+        <div class="card-sub">WEBBANK/FINGERHUT — pay this first</div>
+        <div class="progress-wrap" style="margin-top:10px;">
+          <div class="progress-track"><div class="progress-fill" style="width:0%"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent expenses -->
+  <div class="section-header">
+    <h2>Recent expenses</h2>
+    <a href="expenses.html" class="btn btn-outline btn-sm">View all</a>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th><th>Category</th><th>Date</th><th style="text-align:right;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-weight:500;">Groceries — Trader Joe's</td>
+            <td><span class="badge badge-green">Food</span></td>
+            <td style="color:var(--text3);">May 12</td>
+            <td style="text-align:right; font-weight:600;">$67.40</td>
+          </tr>
+          <tr>
+            <td style="font-weight:500;">Gas</td>
+            <td><span class="badge badge-amber">Transport</span></td>
+            <td style="color:var(--text3);">May 10</td>
+            <td style="text-align:right; font-weight:600;">$48.00</td>
+          </tr>
+          <tr>
+            <td style="font-weight:500;">Netflix</td>
+            <td><span class="badge badge-gray">Subscription</span></td>
+            <td style="color:var(--text3);">May 1</td>
+            <td style="text-align:right; font-weight:600;">$18.00</td>
+          </tr>
+          <tr>
+            <td style="font-weight:500;">Rent</td>
+            <td><span class="badge badge-red">Housing</span></td>
+            <td style="color:var(--text3);">May 1</td>
+            <td style="text-align:right; font-weight:600;">$900.00</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  const debtGroups = [
+    { label: 'Car Loan',       amount: 46248, color: '#c0442a' },
+    { label: 'Credit Cards',   amount: 9726,  color: '#c97b2e' },
+    { label: 'Personal Loans', amount: 5661,  color: '#e8a84a' },
+    { label: 'Other',          amount: 4648,  color: '#b8dcc8' },
+  ];
+
+  const total = debtGroups.reduce((s, d) => s + d.amount, 0);
+
+  new Chart(document.getElementById('debtChart').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: debtGroups.map(d => d.label),
+      datasets: [{
+        data: debtGroups.map(d => d.amount),
+        backgroundColor: debtGroups.map(d => d.color),
+        borderWidth: 3,
+        borderColor: '#ffffff',
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      cutout: '68%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` $${ctx.raw.toLocaleString()} (${((ctx.raw / total) * 100).toFixed(1)}%)`
+          }
+        }
+      }
+    }
+  });
+
+  document.getElementById('debt-legend').innerHTML = debtGroups.map(d => `
+    <div class="debt-leg-item">
+      <div class="debt-leg-left">
+        <div class="debt-leg-dot" style="background:${d.color};"></div>
+        <span style="color:var(--text2);">${d.label}</span>
+      </div>
+      <span style="font-weight:600; color:var(--text);">$${d.amount.toLocaleString()}</span>
+    </div>
+  `).join('');
+</script>
+
+</body>
+</html>

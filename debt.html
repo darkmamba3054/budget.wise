@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debt Tracker — BudgetWise</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .snowball-banner { background: var(--green-l); border: 1px solid var(--green-m); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 20px; display: flex; align-items: flex-start; gap: 12px; }
+    .snowball-icon { font-size: 20px; flex-shrink: 0; }
+    .snowball-text { font-size: 13px; color: #2a5c3f; line-height: 1.6; }
+    .snowball-text strong { font-weight: 600; }
+    .controls { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+    .search { padding: 7px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; background: var(--card); color: var(--text); font-family: 'DM Sans', sans-serif; outline: none; width: 200px; }
+    .search:focus { border-color: var(--green); }
+    .filter-btn { padding: 6px 14px; border-radius: 99px; font-size: 12px; font-weight: 500; border: 1px solid var(--border); background: var(--card); color: var(--text2); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s; }
+    .filter-btn.active { background: var(--green); color: white; border-color: var(--green); }
+    .debt-table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th { text-align: left; font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; padding: 10px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    tbody td { padding: 12px 12px; border-bottom: 1px solid var(--bg2); vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: var(--bg); }
+    tbody tr.snowball-next td { background: var(--green-l); }
+    .debt-name { font-weight: 500; color: var(--text); }
+    .debt-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+    .prog-track { height: 4px; background: var(--bg2); border-radius: 99px; overflow: hidden; margin-top: 5px; min-width: 80px; }
+    .prog-fill { height: 100%; border-radius: 99px; background: var(--green); }
+    .inline-input { width: 100px; padding: 4px 8px; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text); outline: none; }
+    .inline-input:focus { border-color: var(--green); background: var(--card); }
+    .inline-date { width: 120px; }
+    .actions { display: flex; gap: 5px; }
+    .act-btn { padding: 4px 9px; border-radius: 5px; font-size: 11px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--bg); color: var(--text2); font-family: 'DM Sans', sans-serif; white-space: nowrap; }
+    .act-btn.green { background: var(--green-l); color: var(--green); border-color: var(--green-m); }
+    .act-btn.red { background: var(--red-l); color: var(--red); border-color: #f5bbb4; }
+    .snowball-tag { font-size: 10px; background: var(--green); color: white; padding: 1px 6px; border-radius: 4px; margin-left: 5px; vertical-align: middle; }
+    .rank-num { color: var(--text3); font-size: 12px; }
+    .settled-row td { opacity: 0.45; text-decoration: line-through; }
+    .add-form { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; }
+    .add-form h2 { font-family: 'DM Serif Display', serif; font-size: 18px; margin-bottom: 16px; }
+    .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    @media(max-width:640px) { .form-grid { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+
+<script src="nav.js"></script>
+
+<div class="page">
+  <div class="page-header">
+    <h1>Debt Tracker</h1>
+    <p>Snowball method — tackle smallest balances first to build momentum.</p>
+  </div>
+
+  <!-- Summary cards -->
+  <div class="grid-3" style="margin-bottom:20px;" id="summary-cards"></div>
+
+  <!-- Snowball tip -->
+  <div class="snowball-banner">
+    <div class="snowball-icon">❄️</div>
+    <div class="snowball-text" id="snowball-tip"></div>
+  </div>
+
+  <!-- Add new debt form -->
+  <div class="add-form">
+    <h2>Add a debt</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Debt name</label>
+        <input type="text" id="add-name" placeholder="e.g. Credit One Bank">
+      </div>
+      <div class="form-group">
+        <label>Original creditor</label>
+        <input type="text" id="add-creditor" placeholder="e.g. Capital One">
+      </div>
+      <div class="form-group">
+        <label>Collection agency</label>
+        <input type="text" id="add-agency" placeholder="e.g. Midland Credit">
+      </div>
+      <div class="form-group">
+        <label>Current balance ($)</label>
+        <input type="number" id="add-balance" placeholder="0.00" min="0" step="0.01">
+      </div>
+      <div class="form-group">
+        <label>Priority</label>
+        <select id="add-priority">
+          <option>Low</option>
+          <option>Medium</option>
+          <option>High</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Need to call?</label>
+        <select id="add-call">
+          <option value="false">No</option>
+          <option value="true">Yes</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="addDebt()">Add debt</button>
+  </div>
+
+  <!-- Filters -->
+  <div class="controls">
+    <input class="search" type="text" placeholder="Search debts..." oninput="filterDebts(this.value)">
+    <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
+    <button class="filter-btn" onclick="setFilter('high', this)">High priority</button>
+    <button class="filter-btn" onclick="setFilter('call', this)">Need to call</button>
+    <button class="filter-btn" onclick="setFilter('car', this)">Car loan</button>
+    <button class="filter-btn" onclick="setFilter('settled', this)">Settled</button>
+  </div>
+
+  <!-- Table -->
+  <div class="card" style="padding:0; overflow:hidden;">
+    <div class="debt-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Debt / Creditor</th>
+            <th>Collection Agency</th>
+            <th>Balance</th>
+            <th>Settlement Offer</th>
+            <th>Payment Plan</th>
+            <th>Priority</th>
+            <th>Call?</th>
+            <th>Next Action</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="debt-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  let debts = [
+    { name:'WEBBANK/FINGERHUT FRES', agency:'Unknown', creditor:'WEBBANK/FINGERHUT FRES', balance:144, settlement:'', plan:'', nextAction:'', priority:'High', call:true, settled:false },
+    { name:'EMPOWER Electric', agency:'Unknown', creditor:'Empower Electric', balance:190, settlement:'', plan:'', nextAction:'', priority:'Medium', call:false, settled:false },
+    { name:'Discount Power', agency:'TRANSWORLD System Inc', creditor:'Discount Power', balance:230, settlement:'', plan:'', nextAction:'', priority:'Medium', call:true, settled:false },
+    { name:'Helzeberg Diamond', agency:'Unknown', creditor:'TBOM/MILESTONE', balance:300, settlement:'', plan:'', nextAction:'', priority:'Low', call:false, settled:false },
+    { name:'Credit Card', agency:'Unknown', creditor:'Capital One', balance:303, settlement:'', plan:'', nextAction:'', priority:'Medium', call:true, settled:false },
+    { name:'Credit Card', agency:'Portfolio Recovery', creditor:'Synchrony Bank', balance:327, settlement:'', plan:'', nextAction:'', priority:'Low', call:false, settled:false },
+    { name:'Credit Card', agency:'Portfolio Recovery', creditor:'Synchrony Bank', balance:417, settlement:'', plan:'', nextAction:'', priority:'Low', call:false, settled:false },
+    { name:'Progressive Insurance', agency:'Caine and Weiner', creditor:'Progressive Auto', balance:454, settlement:'', plan:'', nextAction:'', priority:'Low', call:false, settled:false },
+    { name:'Celtic Bank', agency:'Spring Oaks Capital', creditor:'Celtic Bank', balance:489, settlement:'', plan:'', nextAction:'', priority:'Low', call:false, settled:false },
+    { name:'Google Credit Card', agency:'Unknown', creditor:'SYNCB/GOOGLE', balance:584, settlement:'', plan:'', nextAction:'', priority:'Low', call:false, settled:false },
+    { name:'Wayfair', agency:'Unknown', creditor:'COMENITYBANK/WAYFAIR', balance:596, settlement:'', plan:'', nextAction:'', priority:'Low', call:false, settled:false },
+    { name:'Credit One Bank', agency:'Midland Credit Management', creditor:'Credit One Bank', balance:698, settlement:'', plan:'', nextAction:'', priority:'Low', call:false, settled:false },
+    { name:'First Premier Bank', agency:'Unknown', creditor:'First Premier Bank', balance:711, settlement:'', plan:'', nextAction:'', priority:'Low', call:false, settled:false },
+    { name:'Aspire Credit Card', agency:'Jefferson Capital', creditor:'Aspire Credit Card', balance:971, settlement:'', plan:'', nextAction:'', priority:'Low', call:false, settled:false },
+    { name:'Credit First', agency:'Unknown', creditor:'Credit First', balance:1112, settlement:'', plan:'', nextAction:'', priority:'Low', call:false, settled:false },
+    { name:'Spring Oaks Capital (maybe Helzeberg)', agency:'Spring Oaks Capital', creditor:'The Bank of Missouri', balance:1226, settlement:'', plan:'', nextAction:'', priority:'Low', call:false, settled:false },
+    { name:'First Premier Bank', agency:'Unknown', creditor:'First Premier Bank', balance:1636, settlement:'', plan:'', nextAction:'', priority:'Low', call:false, settled:false },
+    { name:'Synchrony Bank', agency:'Portfolio Recovery Assoc', creditor:'Synchrony Bank', balance:1873, settlement:'', plan:'', nextAction:'', priority:'Low', call:false, settled:false },
+    { name:'Republic Bank Trust', agency:'NCB Management Service', creditor:'Republic Bank Trust', balance:2200, settlement:'', plan:'', nextAction:'', priority:'Low', call:false, settled:false },
+    { name:'Verizon Wireless', agency:'Unknown', creditor:'Verizon Wireless', balance:3000, settlement:'', plan:'', nextAction:'', priority:'Low', call:false, settled:false },
+    { name:'Capital One', agency:'Unknown', creditor:'Capital One', balance:3019, settlement:'', plan:'', nextAction:'', priority:'Low', call:false, settled:false },
+    { name:'Car Loan', agency:'GM Financial', creditor:'GM Financial', balance:46248, settlement:'', plan:'', nextAction:'', priority:'Low', call:false, settled:false },
+  ];
+
+  let currentFilter = 'all', searchTerm = '';
+
+  function fmt(n) { return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits:0, maximumFractionDigits:0 }); }
+
+  function getSorted() {
+    return [...debts].sort((a, b) => a.balance - b.balance);
+  }
+
+  function renderSummary() {
+    const total    = debts.reduce((s, d) => s + d.balance, 0);
+    const excl     = debts.filter(d => d.name !== 'Car Loan').reduce((s, d) => s + d.balance, 0);
+    const calls    = debts.filter(d => d.call && !d.settled).length;
+    const active   = getSorted().filter(d => !d.settled);
+    const nextDebt = active[0];
+
+    document.getElementById('summary-cards').innerHTML = `
+      <div class="card">
+        <div class="card-title">Total debt</div>
+        <div class="card-value red">${fmt(total)}</div>
+        <div class="card-sub">${debts.length} accounts</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Excl. car loan</div>
+        <div class="card-value amber">${fmt(excl)}</div>
+        <div class="card-sub">21 collection accounts</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Need to call</div>
+        <div class="card-value amber">${calls}</div>
+        <div class="card-sub">Active accounts</div>
+      </div>
+    `;
+
+    if (nextDebt) {
+      document.getElementById('snowball-tip').innerHTML =
+        `<strong>Snowball target:</strong> Focus every extra dollar on <strong>${nextDebt.name} (${fmt(nextDebt.balance)})</strong> — it's your smallest active balance. Once it's paid or settled, roll that payment into the next one. Every account you close reduces stress and builds momentum.`;
+    }
+  }
+
+  function renderTable() {
+    let list = getSorted();
+
+    if (currentFilter === 'high')    list = list.filter(d => d.priority === 'High');
+    if (currentFilter === 'call')    list = list.filter(d => d.call && !d.settled);
+    if (currentFilter === 'car')     list = list.filter(d => d.name === 'Car Loan');
+    if (currentFilter === 'settled') list = list.filter(d => d.settled);
+    if (currentFilter === 'all')     list = list.filter(d => !d.settled);
+
+    if (searchTerm) {
+      list = list.filter(d =>
+        d.name.toLowerCase().includes(searchTerm) ||
+        d.creditor.toLowerCase().includes(searchTerm) ||
+        d.agency.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    const firstActive = getSorted().findIndex(d => !d.settled);
+
+    document.getElementById('debt-tbody').innerHTML = list.map(d => {
+      const i = debts.indexOf(d);
+      const rank = getSorted().indexOf(d) + 1;
+      const isNext = getSorted().indexOf(d) === firstActive;
+      const priClass = d.priority === 'High' ? 'badge-red' : d.priority === 'Medium' ? 'badge-amber' : 'badge-gray';
+      return `<tr class="${d.settled ? 'settled-row' : isNext ? 'snowball-next' : ''}">
+        <td><span class="rank-num">${rank}</span>${isNext ? '<span class="snowball-tag">NEXT</span>' : ''}</td>
+        <td>
+          <div class="debt-name">${d.name}</div>
+          <div class="debt-sub">${d.creditor}</div>
+          <div class="prog-track"><div class="prog-fill" style="width:${d.settled ? 100 : 0}%"></div></div>
+        </td>
+        <td style="font-size:12px; color:var(--text2);">${d.agency}</td>
+        <td style="font-weight:600;">${fmt(d.balance)}</td>
+        <td><input class="inline-input" placeholder="e.g. $86" value="${d.settlement}" oninput="debts[${i}].settlement=this.value"></td>
+        <td><input class="inline-input" placeholder="e.g. $50/mo" value="${d.plan}" oninput="debts[${i}].plan=this.value"></td>
+        <td><span class="badge ${priClass}">${d.priority}</span></td>
+        <td><span class="badge ${d.call ? 'badge-green' : 'badge-gray'}">${d.call ? 'Yes' : 'No'}</span></td>
+        <td><input class="inline-input inline-date" type="date" value="${d.nextAction}" oninput="debts[${i}].nextAction=this.value"></td>
+        <td>
+          <div class="actions">
+            <button class="act-btn green" onclick="markContacted(${i})">Contacted</button>
+            <button class="act-btn red" onclick="markSettled(${i})">${d.settled ? 'Undo' : 'Settled ✓'}</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  function markContacted(i) {
+    debts[i].lastContact = new Date().toISOString().slice(0, 10);
+    alert(`✓ ${debts[i].name} marked as contacted today (${debts[i].lastContact}).`);
+  }
+
+  function markSettled(i) {
+    debts[i].settled = !debts[i].settled;
+    renderSummary();
+    renderTable();
+  }
+
+  function setFilter(f, btn) {
+    currentFilter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderTable();
+  }
+
+  function filterDebts(val) {
+    searchTerm = val.toLowerCase();
+    renderTable();
+  }
+
+  function addDebt() {
+    const name    = document.getElementById('add-name').value.trim();
+    const creditor= document.getElementById('add-creditor').value.trim();
+    const agency  = document.getElementById('add-agency').value.trim() || 'Unknown';
+    const balance = parseFloat(document.getElementById('add-balance').value) || 0;
+    const priority= document.getElementById('add-priority').value;
+    const call    = document.getElementById('add-call').value === 'true';
+
+    if (!name || !balance) { alert('Please enter at least a name and balance.'); return; }
+
+    debts.push({ name, agency, creditor, balance, settlement:'', plan:'', nextAction:'', priority, call, settled:false });
+
+    document.getElementById('add-name').value = '';
+    document.getElementById('add-creditor').value = '';
+    document.getElementById('add-agency').value = '';
+    document.getElementById('add-balance').value = '';
+
+    renderSummary();
+    renderTable();
+  }
+
+  renderSummary();
+  renderTable();
+</script>
+
+</body>
+</html>

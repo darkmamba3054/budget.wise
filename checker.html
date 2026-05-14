@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Purchase Checker — BudgetWise</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<script src="nav.js"></script>
+
+<div class="page">
+  <div class="page-header">
+    <h1>Purchase Checker</h1>
+    <p>Before you buy — slow down and think it through.</p>
+  </div>
+
+  <!-- What are you buying -->
+  <div class="card" style="margin-bottom:20px;">
+    <div class="section-header" style="margin-bottom:16px;">
+      <h2>What are you thinking of buying?</h2>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Item name</label>
+        <input type="text" id="item-name" placeholder="e.g. New headphones">
+      </div>
+      <div class="form-group">
+        <label>Price ($)</label>
+        <input type="number" id="item-price" placeholder="0.00" min="0" step="0.01">
+      </div>
+    </div>
+  </div>
+
+  <!-- Questions -->
+  <div class="checker-card">
+    <h2>The pause checklist</h2>
+    <p>Check off each question honestly before deciding. No judgment — just clarity.</p>
+
+    <div class="question-item">
+      <input type="checkbox" id="q1" onchange="updateVerdict()">
+      <label for="q1">Do I actually need this, or do I just want it right now in this moment?</label>
+    </div>
+    <div class="question-item">
+      <input type="checkbox" id="q2" onchange="updateVerdict()">
+      <label for="q2">Have I wanted this for more than 48 hours, or did I just see it?</label>
+    </div>
+    <div class="question-item">
+      <input type="checkbox" id="q3" onchange="updateVerdict()">
+      <label for="q3">Does this fit within my remaining budget this month?</label>
+    </div>
+    <div class="question-item">
+      <input type="checkbox" id="q4" onchange="updateVerdict()">
+      <label for="q4">Do I have something that already does this job?</label>
+    </div>
+    <div class="question-item">
+      <input type="checkbox" id="q5" onchange="updateVerdict()">
+      <label for="q5">Will I still be glad I bought this in 30 days?</label>
+    </div>
+    <div class="question-item">
+      <input type="checkbox" id="q6" onchange="updateVerdict()">
+      <label for="q6">Am I in a calm headspace right now — not stressed, bored, or impulsive?</label>
+    </div>
+
+    <div class="verdict" id="verdict"></div>
+
+    <div style="margin-top:20px; display:flex; gap:10px; flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="logDecision('bought')">I bought it</button>
+      <button class="btn btn-outline" onclick="logDecision('waited')">I waited</button>
+      <button class="btn btn-danger" onclick="logDecision('skipped')">I skipped it</button>
+    </div>
+  </div>
+
+  <!-- Decision log -->
+  <div class="section-header">
+    <h2>Decision log</h2>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Price</th>
+            <th>Score</th>
+            <th>Decision</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody id="log-tbody">
+          <tr>
+            <td>New desk chair</td>
+            <td>$280.00</td>
+            <td><span class="badge badge-green">5 / 6</span></td>
+            <td><span class="badge badge-green">Bought</span></td>
+            <td style="color:var(--text2);">May 8</td>
+          </tr>
+          <tr>
+            <td>Gaming keyboard</td>
+            <td>$140.00</td>
+            <td><span class="badge badge-amber">2 / 6</span></td>
+            <td><span class="badge badge-amber">Waited</span></td>
+            <td style="color:var(--text2);">May 3</td>
+          </tr>
+          <tr>
+            <td>Smart watch</td>
+            <td>$320.00</td>
+            <td><span class="badge badge-red">1 / 6</span></td>
+            <td><span class="badge badge-red">Skipped</span></td>
+            <td style="color:var(--text2);">Apr 28</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  function getScore() {
+    let score = 0;
+    for (let i = 1; i <= 6; i++) {
+      if (document.getElementById('q' + i).checked) score++;
+    }
+    return score;
+  }
+
+  function updateVerdict() {
+    const score = getScore();
+    const verdict = document.getElementById('verdict');
+    verdict.style.display = 'block';
+
+    if (score >= 5) {
+      verdict.className = 'verdict go';
+      verdict.textContent = `${score}/6 — Looks like a solid purchase. You've thought it through and it fits your situation.`;
+    } else if (score >= 3) {
+      verdict.className = 'verdict wait';
+      verdict.textContent = `${score}/6 — Maybe wait. A few things don't line up yet. Give it 48 hours and check again.`;
+    } else {
+      verdict.className = 'verdict stop';
+      verdict.textContent = `${score}/6 — Pause on this one. Most of the checks didn't pass — this might be an impulse buy.`;
+    }
+  }
+
+  function logDecision(decision) {
+    const name  = document.getElementById('item-name').value.trim() || 'Unnamed item';
+    const price = parseFloat(document.getElementById('item-price').value) || 0;
+    const score = getScore();
+
+    const scoreBadge = score >= 5 ? 'badge-green' : score >= 3 ? 'badge-amber' : 'badge-red';
+    const decBadge   = decision === 'bought' ? 'badge-green' : decision === 'waited' ? 'badge-amber' : 'badge-red';
+    const decLabel   = decision === 'bought' ? 'Bought' : decision === 'waited' ? 'Waited' : 'Skipped';
+    const today = new Date().toLocaleDateString('en-US', { month:'short', day:'numeric' });
+
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${name}</td>
+      <td>$${price.toFixed(2)}</td>
+      <td><span class="badge ${scoreBadge}">${score} / 6</span></td>
+      <td><span class="badge ${decBadge}">${decLabel}</span></td>
+      <td style="color:var(--text2);">${today}</td>
+    `;
+    document.getElementById('log-tbody').prepend(row);
+
+    // Reset
+    document.getElementById('item-name').value = '';
+    document.getElementById('item-price').value = '';
+    for (let i = 1; i <= 6; i++) document.getElementById('q' + i).checked = false;
+    document.getElementById('verdict').style.display = 'none';
+  }
+</script>
+
+</body>
+</html>

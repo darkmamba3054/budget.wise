@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paycheck Simulator — BudgetWise</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .hours-btns { display: flex; gap: 8px; margin-bottom: 14px; }
+    .hr-btn { flex: 1; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text); font-family: 'DM Sans', sans-serif; transition: all 0.15s; }
+    .hr-btn.active { background: var(--green); color: white; border-color: var(--green); }
+    .net-card { background: var(--green); border-radius: var(--radius); padding: 28px; color: white; margin-bottom: 20px; }
+    .net-label { font-size: 13px; font-weight: 600; opacity: 0.75; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; }
+    .net-val { font-size: 52px; font-weight: 700; letter-spacing: -2px; line-height: 1; margin-bottom: 6px; }
+    .net-sub { font-size: 13px; opacity: 0.7; }
+    .breakdown-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--bg2); font-size: 14px; }
+    .breakdown-row:last-child { border-bottom: none; }
+    .row-note { font-size: 11px; color: var(--text3); display: block; margin-top: 1px; }
+    .row-amt.positive { color: var(--green); }
+    .row-amt.negative { color: var(--red); }
+    .row-amt { font-weight: 600; }
+    .section-label { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.07em; padding: 12px 0 4px; }
+    .bar-wrap { background: var(--bg2); border-radius: 99px; height: 8px; overflow: hidden; margin: 4px 0 14px; }
+    .bar-fill { height: 100%; border-radius: 99px; background: var(--green); transition: width 0.35s ease; }
+    .bar-fill.amber { background: var(--amber); }
+    .bar-fill.red { background: var(--red); }
+    .scenario-grid { display: grid; grid-template-columns: 80px 1fr 1fr 1fr; gap: 8px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--bg2); font-size: 13px; }
+    .scenario-grid:last-child { border-bottom: none; }
+    .scenario-head { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; }
+    .slider-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--bg2); font-size: 13px; }
+    .slider-row:last-child { border-bottom: none; }
+    .slider-label { font-weight: 500; color: var(--text); }
+    .slider-sub { font-size: 11px; color: var(--text3); }
+    input[type=range] { width: 90px; accent-color: var(--green); }
+    .totals-row { margin-top: 16px; padding-top: 16px; border-top: 2px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    @media(max-width:640px) { .sim-grid { grid-template-columns: 1fr !important; } }
+  </style>
+</head>
+<body>
+
+<script src="nav.js"></script>
+
+<div class="page">
+  <div class="page-header">
+    <h1>Paycheck Simulator</h1>
+    <p>Based on your actual paystub — $45.92/hr, bi-monthly pay schedule.</p>
+  </div>
+
+  <div class="sim-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+
+    <!-- LEFT COLUMN -->
+    <div>
+      <!-- Hours + Rate -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">Hours this period</div>
+        <div class="hours-btns">
+          <button class="hr-btn" onclick="setHours(80, this)">80 hrs</button>
+          <button class="hr-btn" onclick="setHours(88, this)">88 hrs</button>
+          <button class="hr-btn active" onclick="setHours(96, this)">96 hrs</button>
+        </div>
+        <div class="form-group">
+          <label for="hours-input">Or enter custom hours</label>
+          <input type="number" id="hours-input" value="96" min="0" max="120" step="1" oninput="setHoursCustom(this.value)">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label for="rate-input">Hourly rate ($)</label>
+          <input type="number" id="rate-input" value="45.92" min="0" step="0.01" oninput="calc()">
+        </div>
+      </div>
+
+      <!-- What-if sliders -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">What-if adjustments</div>
+        <div class="slider-row">
+          <div>
+            <div class="slider-label">401k contribution</div>
+            <div class="slider-sub">Pre-tax — reduces taxable income</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="range" id="k401-slider" min="0" max="15" value="0" step="1" oninput="k401Change(this.value)">
+            <span id="k401-label" style="font-size:13px; font-weight:600; min-width:32px; color:var(--green);">0%</span>
+          </div>
+        </div>
+        <div class="slider-row">
+          <div>
+            <div class="slider-label">Raise scenario</div>
+            <div class="slider-sub">Test a new hourly rate</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="range" id="raise-slider" min="0" max="20" value="0" step="1" oninput="raiseChange(this.value)">
+            <span id="raise-label" style="font-size:13px; font-weight:600; min-width:40px; color:var(--green);">+$0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scenarios -->
+      <div class="card">
+        <div class="card-title">All pay scenarios</div>
+        <div class="scenario-grid scenario-head">
+          <div>Hours</div><div>Gross</div><div>Taxes</div><div>Net</div>
+        </div>
+        <div id="scenarios"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div>
+      <div class="net-card">
+        <div class="net-label">Estimated take-home</div>
+        <div class="net-val" id="net-display">$3,109</div>
+        <div class="net-sub" id="net-sub">96 hours &nbsp;·&nbsp; $45.92/hr</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Full breakdown</div>
+
+        <div class="section-label">Earnings</div>
+        <div class="breakdown-row">
+          <div>Gross pay<span class="row-note" id="gross-note">96 hrs × $45.92</span></div>
+          <span class="row-amt positive" id="gross-display">+$4,408</span>
+        </div>
+        <div class="breakdown-row" id="k401-row" style="display:none;">
+          <div>401k contribution<span class="row-note" id="k401-note"></span></div>
+          <span class="row-amt negative" id="k401-display">-$0</span>
+        </div>
+        <div class="breakdown-row">
+          <div>Pre-tax deductions<span class="row-note">BCBS PPO, Dental, Vision</span></div>
+          <span class="row-amt negative">-$520</span>
+        </div>
+        <div class="breakdown-row">
+          <div>Taxable income</div>
+          <span class="row-amt" id="taxable-display" style="color:var(--text);">$3,892</span>
+        </div>
+
+        <div class="section-label">Taxes</div>
+        <div class="breakdown-row">
+          <div>Federal income tax<span class="row-note">6.12% of taxable</span></div>
+          <span class="row-amt negative" id="fed-display">-$238</span>
+        </div>
+        <div class="breakdown-row">
+          <div>Social Security<span class="row-note">6.2% of gross (fixed by law)</span></div>
+          <span class="row-amt negative" id="ss-display">-$273</span>
+        </div>
+        <div class="breakdown-row">
+          <div>Medicare<span class="row-note">1.45% of gross (fixed by law)</span></div>
+          <span class="row-amt negative" id="med-display">-$64</span>
+        </div>
+        <div class="breakdown-row">
+          <div>State / local tax<span class="row-note">1.45% of taxable</span></div>
+          <span class="row-amt negative" id="state-display">-$56</span>
+        </div>
+
+        <div class="section-label">Post-tax</div>
+        <div class="breakdown-row">
+          <div>Post-tax deductions<span class="row-note">State Levy, loan, benefits</span></div>
+          <span class="row-amt negative">-$151</span>
+        </div>
+
+        <div class="totals-row">
+          <span style="font-weight:600; font-size:15px;">Take-home pay</span>
+          <span style="font-weight:700; font-size:22px; color:var(--green);" id="net-display2">$3,109</span>
+        </div>
+
+        <!-- % bars -->
+        <div style="margin-top:18px;">
+          <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--text3); margin-bottom:4px;">
+            <span>Take-home</span><span id="net-pct-label">70.6%</span>
+          </div>
+          <div class="bar-wrap"><div class="bar-fill" id="net-bar" style="width:70%"></div></div>
+          <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--text3); margin-bottom:4px;">
+            <span>Taxes</span><span id="tax-pct-label">17.7%</span>
+          </div>
+          <div class="bar-wrap"><div class="bar-fill red" id="tax-bar" style="width:18%"></div></div>
+          <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--text3); margin-bottom:4px;">
+            <span>Deductions</span><span id="ded-pct-label">11.7%</span>
+          </div>
+          <div class="bar-wrap"><div class="bar-fill amber" id="ded-bar" style="width:12%"></div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const FED_PCT   = 0.0612;
+  const SS_PCT    = 0.0620;
+  const MED_PCT   = 0.0145;
+  const STATE_PCT = 0.0145;
+  const PRE_TAX   = 520.21;
+  const POST_TAX  = 150.51;
+  const TAX_BEN   = 3.68;
+
+  let hours = 96, k401Pct = 0, raiseAmt = 0;
+
+  function fmt(n)  { return '$' + Math.round(n).toLocaleString(); }
+  function pct(n)  { return n.toFixed(1) + '%'; }
+
+  function computeNet(h, rate, k, raise) {
+    const r      = rate + raise;
+    const gross  = h * r;
+    const k401   = gross * (k / 100);
+    const taxable = Math.max(0, gross + TAX_BEN - PRE_TAX - k401);
+    const fed    = taxable * FED_PCT;
+    const ss     = gross * SS_PCT;
+    const med    = gross * MED_PCT;
+    const state  = taxable * STATE_PCT;
+    const totalTax = fed + ss + med + state;
+    const totalDed = PRE_TAX + POST_TAX + k401;
+    const net    = gross + TAX_BEN - PRE_TAX - k401 - fed - ss - med - state - POST_TAX;
+    return { gross, k401, taxable, fed, ss, med, state, totalTax, totalDed, net };
+  }
+
+  function calc() {
+    const rate = parseFloat(document.getElementById('rate-input').value) || 45.92;
+    const r = computeNet(hours, rate, k401Pct, raiseAmt);
+
+    document.getElementById('net-display').textContent   = fmt(r.net);
+    document.getElementById('net-display2').textContent  = fmt(r.net);
+    document.getElementById('net-sub').textContent       = `${hours} hours · $${(rate + raiseAmt).toFixed(2)}/hr`;
+    document.getElementById('gross-display').textContent = '+' + fmt(r.gross);
+    document.getElementById('gross-note').textContent    = `${hours} hrs × $${(rate + raiseAmt).toFixed(2)}`;
+    document.getElementById('taxable-display').textContent = fmt(r.taxable);
+    document.getElementById('fed-display').textContent   = '-' + fmt(r.fed);
+    document.getElementById('ss-display').textContent    = '-' + fmt(r.ss);
+    document.getElementById('med-display').textContent   = '-' + fmt(r.med);
+    document.getElementById('state-display').textContent = '-' + fmt(r.state);
+
+    if (r.k401 > 0) {
+      document.getElementById('k401-row').style.display = '';
+      document.getElementById('k401-display').textContent = '-' + fmt(r.k401);
+      document.getElementById('k401-note').textContent = k401Pct + '% of gross';
+    } else {
+      document.getElementById('k401-row').style.display = 'none';
+    }
+
+    const netPct = (r.net / r.gross) * 100;
+    const taxPct = (r.totalTax / r.gross) * 100;
+    const dedPct = (r.totalDed / r.gross) * 100;
+    document.getElementById('net-bar').style.width  = netPct + '%';
+    document.getElementById('tax-bar').style.width  = taxPct + '%';
+    document.getElementById('ded-bar').style.width  = dedPct + '%';
+    document.getElementById('net-pct-label').textContent = pct(netPct);
+    document.getElementById('tax-pct-label').textContent = pct(taxPct);
+    document.getElementById('ded-pct-label').textContent = pct(dedPct);
+
+    renderScenarios(rate);
+  }
+
+  function renderScenarios(rate) {
+    document.getElementById('scenarios').innerHTML = [80, 88, 96].map(h => {
+      const r = computeNet(h, rate, k401Pct, raiseAmt);
+      const badge = h === 96 ? 'badge-green' : h === 88 ? 'badge-amber' : 'badge-red';
+      const bold = h === hours ? 'font-weight:700;' : '';
+      return `<div class="scenario-grid" style="${bold}">
+        <div><span class="badge ${badge}">${h} hrs</span></div>
+        <div>${fmt(r.gross)}</div>
+        <div style="color:var(--red);">-${fmt(r.totalTax)}</div>
+        <div style="color:var(--green); font-weight:600;">${fmt(r.net)}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function setHours(h, btn) {
+    hours = h;
+    document.getElementById('hours-input').value = h;
+    document.querySelectorAll('.hr-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    calc();
+  }
+
+  function setHoursCustom(val) {
+    hours = parseInt(val) || 0;
+    document.querySelectorAll('.hr-btn').forEach(b => b.classList.remove('active'));
+    calc();
+  }
+
+  function k401Change(val) {
+    k401Pct = parseInt(val);
+    document.getElementById('k401-label').textContent = val + '%';
+    calc();
+  }
+
+  function raiseChange(val) {
+    raiseAmt = parseInt(val);
+    document.getElementById('raise-label').textContent = '+$' + val;
+    calc();
+  }
+
+  calc();
+</script>
+
+</body>
+</html>

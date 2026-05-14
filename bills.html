@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bills & Subscriptions — BudgetWise</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .add-form { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 24px; }
+    .add-form h2 { font-family: 'DM Serif Display', serif; font-size: 18px; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+
+<script src="nav.js"></script>
+
+<div class="page">
+  <div class="page-header">
+    <h1>Bills & Subscriptions</h1>
+    <p>Everything that hits your account on a regular basis.</p>
+  </div>
+
+  <!-- Summary -->
+  <div class="grid-2" style="margin-bottom:24px;">
+    <div class="card">
+      <div class="card-title">Monthly total</div>
+      <div class="card-value red" id="monthly-total">$0</div>
+      <div class="card-sub">Fixed bills only</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Floating / estimated</div>
+      <div class="card-value amber" id="floating-total">$0</div>
+      <div class="card-sub">No fixed due date</div>
+    </div>
+  </div>
+
+  <!-- Add bill form -->
+  <div class="add-form">
+    <h2>Add a bill</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Bill name</label>
+        <input type="text" id="bill-name" placeholder="e.g. Netflix">
+      </div>
+      <div class="form-group">
+        <label>Amount ($)</label>
+        <input type="number" id="bill-amount" placeholder="0.00" min="0" step="0.01">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Due date (day of month)</label>
+        <input type="number" id="bill-due" placeholder="Leave blank if no fixed date" min="1" max="31">
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="bill-cat">
+          <option>Housing</option>
+          <option>Utilities</option>
+          <option>Insurance</option>
+          <option>Transportation</option>
+          <option>Food</option>
+          <option>Giving</option>
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Auto pay?</label>
+        <select id="bill-auto">
+          <option value="No">No</option>
+          <option value="Yes">Yes</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Frequency</label>
+        <select id="bill-freq">
+          <option>Monthly</option>
+          <option>Weekly</option>
+          <option>Yearly</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="addBill()">Add bill</button>
+  </div>
+
+  <!-- Bills table -->
+  <div class="section-header">
+    <h2>Your bills</h2>
+  </div>
+  <div class="card" style="padding:0; overflow:hidden;">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Bill name</th>
+            <th>Amount</th>
+            <th>Due date</th>
+            <th>Auto pay</th>
+            <th>Frequency</th>
+            <th>Category</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="bills-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  let bills = [
+    { name:'Cell Phone',  amount:160,  day:15,   auto:'No',  freq:'Monthly', category:'Housing',        paid:false },
+    { name:'Internet',    amount:160,  day:21,   auto:'No',  freq:'Monthly', category:'Utilities',      paid:false },
+    { name:'Car Payment', amount:1015, day:8,    auto:'No',  freq:'Monthly', category:'Utilities',      paid:false },
+    { name:'Internet 2',  amount:200,  day:21,   auto:'No',  freq:'Monthly', category:'Utilities',      paid:false },
+    { name:'Insurance',   amount:202,  day:21,   auto:'No',  freq:'Monthly', category:'Insurance',      paid:false },
+    { name:'Diapers',     amount:140,  day:null, auto:'No',  freq:'Monthly', category:'Utilities',      paid:false },
+    { name:'Tithe',       amount:1000, day:null, auto:'No',  freq:'Monthly', category:'Giving',         paid:false },
+    { name:'Gas',         amount:250,  day:null, auto:'No',  freq:'Monthly', category:'Transportation', paid:false },
+    { name:'Groceries',   amount:500,  day:null, auto:'No',  freq:'Monthly', category:'Food',           paid:false },
+  ];
+
+  function fmt(n) { return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 }); }
+  function ordinal(d) { if (!d) return '—'; return d + (d===1?'st':d===2?'nd':d===3?'rd':'th'); }
+
+  function renderSummary() {
+    const fixed    = bills.filter(b => b.day).reduce((s,b) => s + b.amount, 0);
+    const floating = bills.filter(b => !b.day).reduce((s,b) => s + b.amount, 0);
+    document.getElementById('monthly-total').textContent  = fmt(fixed);
+    document.getElementById('floating-total').textContent = fmt(floating);
+  }
+
+  function renderTable() {
+    document.getElementById('bills-tbody').innerHTML = bills.map((b, i) => {
+      const catClass = b.category === 'Housing' ? 'badge-red' : b.category === 'Insurance' ? 'badge-amber' : b.category === 'Giving' ? 'badge-green' : 'badge-gray';
+      const dueStr   = b.day ? ordinal(b.day) : '<span style="color:var(--text3);">Floating</span>';
+      return `<tr style="${b.paid ? 'opacity:0.5;' : ''}">
+        <td style="font-weight:500;">${b.name}</td>
+        <td style="font-weight:600;">${fmt(b.amount)}</td>
+        <td>${dueStr}</td>
+        <td><span class="badge ${b.auto==='Yes' ? 'badge-green' : 'badge-gray'}">${b.auto}</span></td>
+        <td style="color:var(--text2);">${b.freq}</td>
+        <td><span class="badge ${catClass}">${b.category}</span></td>
+        <td>
+          <span class="badge ${b.paid ? 'badge-green' : 'badge-amber'}">${b.paid ? 'Paid' : 'Unpaid'}</span>
+        </td>
+        <td style="display:flex; gap:6px;">
+          <button class="btn btn-outline btn-sm" onclick="togglePaid(${i})">${b.paid ? 'Unmark' : 'Mark paid'}</button>
+          <button class="btn btn-sm" style="background:var(--red-l); color:var(--red); border:none;" onclick="removeBill(${i})">Remove</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  function togglePaid(i) { bills[i].paid = !bills[i].paid; renderTable(); }
+  function removeBill(i) { bills.splice(i, 1); renderSummary(); renderTable(); }
+
+  function addBill() {
+    const name   = document.getElementById('bill-name').value.trim();
+    const amount = parseFloat(document.getElementById('bill-amount').value);
+    const due    = parseInt(document.getElementById('bill-due').value) || null;
+    const auto   = document.getElementById('bill-auto').value;
+    const freq   = document.getElementById('bill-freq').value;
+    const cat    = document.getElementById('bill-cat').value;
+    if (!name || !amount) { alert('Please enter a name and amount.'); return; }
+    bills.push({ name, amount, day:due, auto, freq, category:cat, paid:false });
+    document.getElementById('bill-name').value   = '';
+    document.getElementById('bill-amount').value = '';
+    document.getElementById('bill-due').value    = '';
+    renderSummary();
+    renderTable();
+  }
+
+  renderSummary();
+  renderTable();
+</script>
+
+</body>
+</html>
