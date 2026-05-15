@@ -58,14 +58,16 @@ nav {
   font-size: 18px;
   color: var(--text);
   text-decoration: none;
-  padding: 10px 24px 10px 0;
+  padding: 0 24px 0 0;
   margin-right: 16px;
   border-right: 1px solid var(--border);
   white-space: nowrap;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   letter-spacing: -0.3px;
+  height: 60px;
 }
 
 .nav-brand span.brand-check { color: var(--green); }
@@ -82,8 +84,10 @@ nav {
 }
 
 .nav-group-btn {
-  display: block;
-  padding: 18px 14px;
+  display: flex;
+  align-items: center;
+  height: 60px;
+  padding: 0 14px;
   font-size: 13px;
   font-weight: 500;
   color: var(--text2);
