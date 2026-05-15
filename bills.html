@@ -8,6 +8,9 @@
   <style>
     .add-form { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 24px; }
     .add-form h2 { font-family: 'DM Serif Display', serif; font-size: 18px; margin-bottom: 16px; }
+    .edit-row td { background: var(--green-l) !important; padding: 10px 8px !important; }
+    .edit-row input, .edit-row select { padding: 5px 8px; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); font-family: 'DM Sans', sans-serif; color: var(--text); width: 100%; outline: none; }
+    .edit-row input:focus, .edit-row select:focus { border-color: var(--green); }
   </style>
 </head>
 <body>
@@ -133,10 +136,30 @@
     document.getElementById('floating-total').textContent = fmt(floating);
   }
 
+  let editingIndex = null;
+
   function renderTable() {
+    const cats = ['Housing','Utilities','Insurance','Transportation','Food','Giving','Other'];
     document.getElementById('bills-tbody').innerHTML = bills.map((b, i) => {
       const catClass = b.category === 'Housing' ? 'badge-red' : b.category === 'Insurance' ? 'badge-amber' : b.category === 'Giving' ? 'badge-green' : 'badge-gray';
       const dueStr   = b.day ? ordinal(b.day) : '<span style="color:var(--text3);">Floating</span>';
+
+      if (editingIndex === i) {
+        return `<tr class="edit-row">
+          <td><input type="text" id="edit-name" value="${b.name}"></td>
+          <td><input type="number" id="edit-amount" value="${b.amount}" min="0" step="0.01" style="width:80px;"></td>
+          <td><input type="number" id="edit-day" value="${b.day||''}" placeholder="blank=floating" min="1" max="31" style="width:80px;"></td>
+          <td><select id="edit-auto"><option ${b.auto==='No'?'selected':''}>No</option><option ${b.auto==='Yes'?'selected':''}>Yes</option></select></td>
+          <td><select id="edit-freq"><option ${b.freq==='Monthly'?'selected':''}>Monthly</option><option ${b.freq==='Weekly'?'selected':''}>Weekly</option><option ${b.freq==='Yearly'?'selected':''}>Yearly</option></select></td>
+          <td><select id="edit-cat">${cats.map(c=>`<option ${b.category===c?'selected':''}>${c}</option>`).join('')}</select></td>
+          <td><span class="badge ${b.paid?'badge-green':'badge-amber'}">${b.paid?'Paid':'Unpaid'}</span></td>
+          <td style="display:flex; gap:6px;">
+            <button class="btn btn-primary btn-sm" onclick="saveEdit(${i})">Save</button>
+            <button class="btn btn-sm" style="background:var(--bg2);color:var(--text2);border:none;" onclick="cancelEdit()">Cancel</button>
+          </td>
+        </tr>`;
+      }
+
       return `<tr style="${b.paid ? 'opacity:0.5;' : ''}">
         <td style="font-weight:500;">${b.name}</td>
         <td style="font-weight:600;">${fmt(b.amount)}</td>
@@ -144,15 +167,31 @@
         <td><span class="badge ${b.auto==='Yes' ? 'badge-green' : 'badge-gray'}">${b.auto}</span></td>
         <td style="color:var(--text2);">${b.freq}</td>
         <td><span class="badge ${catClass}">${b.category}</span></td>
-        <td>
-          <span class="badge ${b.paid ? 'badge-green' : 'badge-amber'}">${b.paid ? 'Paid' : 'Unpaid'}</span>
-        </td>
-        <td style="display:flex; gap:6px;">
+        <td><span class="badge ${b.paid ? 'badge-green' : 'badge-amber'}">${b.paid ? 'Paid' : 'Unpaid'}</span></td>
+        <td style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button class="btn btn-outline btn-sm" onclick="startEdit(${i})">Edit</button>
           <button class="btn btn-outline btn-sm" onclick="togglePaid(${i})">${b.paid ? 'Unmark' : 'Mark paid'}</button>
           <button class="btn btn-sm" style="background:var(--red-l); color:var(--red); border:none;" onclick="removeBill(${i})">Remove</button>
         </td>
       </tr>`;
     }).join('');
+  }
+
+  function startEdit(i)  { editingIndex = i; renderTable(); }
+  function cancelEdit()  { editingIndex = null; renderTable(); }
+
+  function saveEdit(i) {
+    const name   = document.getElementById('edit-name').value.trim();
+    const amount = parseFloat(document.getElementById('edit-amount').value);
+    const day    = parseInt(document.getElementById('edit-day').value) || null;
+    const auto   = document.getElementById('edit-auto').value;
+    const freq   = document.getElementById('edit-freq').value;
+    const cat    = document.getElementById('edit-cat').value;
+    if (!name || !amount) { alert('Name and amount are required.'); return; }
+    bills[i] = { ...bills[i], name, amount, day, auto, freq, category:cat };
+    editingIndex = null;
+    renderSummary();
+    renderTable();
   }
 
   function togglePaid(i) { bills[i].paid = !bills[i].paid; renderTable(); }

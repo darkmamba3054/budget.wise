@@ -143,6 +143,8 @@
     return { ta, tl, nw:ta-tl, ...bycat };
   }
 
+  let editAsset = null, editLiability = null;
+
   function render() {
     const { ta, tl, nw, liquid, retire, physical } = calc();
     document.getElementById('nw-val').textContent = fmt(nw);
@@ -166,14 +168,48 @@
       html += `<div class="cat-label"><span>${catLabels[cat]}</span><span>${fmt(catTot)}</span></div>`;
       items.forEach(a => {
         const i = assets.indexOf(a);
-        html += `<div class="item-row"><div><div style="font-weight:500;">${a.name}</div><div class="item-sub">${a.sub}</div></div><div style="display:flex;align-items:center;gap:8px;"><span style="font-weight:600;">${fmt(a.amount)}</span><button class="del-btn" onclick="removeAsset(${i})">×</button></div></div>`;
+        if (editAsset === i) {
+          html += `<div class="item-row" style="background:var(--green-l); flex-direction:column; align-items:stretch; gap:8px;">
+            <div style="display:grid; grid-template-columns:1fr 100px; gap:8px;">
+              <input id="ea-name" type="text" value="${a.name}" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">
+              <input id="ea-amt" type="number" value="${a.amount}" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+              <input id="ea-sub" type="text" value="${a.sub}" placeholder="Description (optional)" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">
+              <select id="ea-cat" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">
+                <option value="liquid" ${a.cat==='liquid'?'selected':''}>Liquid</option>
+                <option value="retire" ${a.cat==='retire'?'selected':''}>Retirement</option>
+                <option value="physical" ${a.cat==='physical'?'selected':''}>Physical</option>
+              </select>
+            </div>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-primary btn-sm" onclick="saveAsset(${i})">Save</button>
+              <button class="btn btn-sm" style="background:var(--bg2);color:var(--text2);border:none;" onclick="cancelAssetEdit()">Cancel</button>
+            </div>
+          </div>`;
+        } else {
+          html += `<div class="item-row"><div><div style="font-weight:500;">${a.name}</div><div class="item-sub">${a.sub}</div></div><div style="display:flex;align-items:center;gap:6px;"><span style="font-weight:600;">${fmt(a.amount)}</span><button class="btn btn-outline btn-sm" onclick="startAssetEdit(${i})">Edit</button><button class="del-btn" onclick="removeAsset(${i})">×</button></div></div>`;
+        }
       });
     });
     document.getElementById('assets-list').innerHTML = html;
 
-    document.getElementById('liabilities-list').innerHTML = liabilities.map((l,i) =>
-      `<div class="item-row"><div><div style="font-weight:500;">${l.name}</div><div class="item-sub">${l.sub}</div></div><div style="display:flex;align-items:center;gap:8px;"><span style="font-weight:600;color:var(--red);">${fmt(l.amount)}</span><button class="del-btn" onclick="removeLiability(${i})">×</button></div></div>`
-    ).join('');
+    document.getElementById('liabilities-list').innerHTML = liabilities.map((l,i) => {
+      if (editLiability === i) {
+        return `<div class="item-row" style="background:var(--red-l); flex-direction:column; align-items:stretch; gap:8px;">
+          <div style="display:grid; grid-template-columns:1fr 100px; gap:8px;">
+            <input id="el-name" type="text" value="${l.name}" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">
+            <input id="el-amt" type="number" value="${l.amount}" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">
+          </div>
+          <input id="el-sub" type="text" value="${l.sub}" placeholder="Description (optional)" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-primary btn-sm" onclick="saveLiability(${i})">Save</button>
+            <button class="btn btn-sm" style="background:var(--bg2);color:var(--text2);border:none;" onclick="cancelLiabilityEdit()">Cancel</button>
+          </div>
+        </div>`;
+      }
+      return `<div class="item-row"><div><div style="font-weight:500;">${l.name}</div><div class="item-sub">${l.sub}</div></div><div style="display:flex;align-items:center;gap:6px;"><span style="font-weight:600;color:var(--red);">${fmt(l.amount)}</span><button class="btn btn-outline btn-sm" onclick="startLiabilityEdit(${i})">Edit</button><button class="del-btn" onclick="removeLiability(${i})">×</button></div></div>`;
+    }).join('');
 
     const cur = history.find(h => h.month === 'May 2026');
     if (cur) cur.nw = nw;
@@ -190,6 +226,32 @@
         <div style="font-weight:500;color:${change===null?'var(--text3)':change>0?'var(--green)':'var(--red)'};">${change!==null?(change>0?'+':'')+fmt(change):'—'}</div>
       </div>`;
     }).join('');
+  }
+
+  function startAssetEdit(i)    { editAsset = i; editLiability = null; render(); }
+  function cancelAssetEdit()    { editAsset = null; render(); }
+  function startLiabilityEdit(i){ editLiability = i; editAsset = null; render(); }
+  function cancelLiabilityEdit(){ editLiability = null; render(); }
+
+  function saveAsset(i) {
+    const name   = document.getElementById('ea-name').value.trim();
+    const amount = parseFloat(document.getElementById('ea-amt').value) || 0;
+    const sub    = document.getElementById('ea-sub').value.trim();
+    const cat    = document.getElementById('ea-cat').value;
+    if (!name) return;
+    assets[i] = { name, amount, cat, sub };
+    editAsset = null;
+    render();
+  }
+
+  function saveLiability(i) {
+    const name   = document.getElementById('el-name').value.trim();
+    const amount = parseFloat(document.getElementById('el-amt').value) || 0;
+    const sub    = document.getElementById('el-sub').value.trim();
+    if (!name) return;
+    liabilities[i] = { name, amount, sub };
+    editLiability = null;
+    render();
   }
 
   function addAsset() {
