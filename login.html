@@ -106,6 +106,7 @@
 </div>
 
 <script>
+document.addEventListener('DOMContentLoaded', function() {
   const db = supabasejs.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   // Define switchTab FIRST before anything else calls it
@@ -189,6 +190,7 @@
     el.className = 'auth-msg ' + type;
     el.style.display = 'block';
   }
+}); // end DOMContentLoaded
 </script>
 
 </body>
