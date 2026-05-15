@@ -68,7 +68,7 @@
   document.write(
     '<nav>' +
       '<div class="nav-inner">' +
-        '<a class="nav-brand" href="index.html">&#127807; BudgetWise</a>' +
+        '<a class="nav-brand" href="index.html">♟️ <span class="brand-check">Check</span><span class="brand-mate">Mate</span> Budget</a>' +
         '<div class="nav-groups">' + groupsHtml + '</div>' +
         '<div class="nav-user-area" id="nav-user-area">' +
           '<div class="nav-user-placeholder"></div>' +

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bills & Subscriptions — BudgetWise</title>
+  <title>Bills & Subscriptions — CheckMate Budget</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="supabase.js"></script>
@@ -118,66 +118,89 @@
 </div>
 
 <script>
-  let bills = [
-    { name:'Cell Phone',  amount:160,  day:15,   auto:'No',  freq:'Monthly', category:'Housing',        paid:false },
-    { name:'Internet',    amount:160,  day:21,   auto:'No',  freq:'Monthly', category:'Utilities',      paid:false },
-    { name:'Car Payment', amount:1015, day:8,    auto:'No',  freq:'Monthly', category:'Utilities',      paid:false },
-    { name:'Internet 2',  amount:200,  day:21,   auto:'No',  freq:'Monthly', category:'Utilities',      paid:false },
-    { name:'Insurance',   amount:202,  day:21,   auto:'No',  freq:'Monthly', category:'Insurance',      paid:false },
-    { name:'Diapers',     amount:140,  day:null, auto:'No',  freq:'Monthly', category:'Utilities',      paid:false },
-    { name:'Tithe',       amount:1000, day:null, auto:'No',  freq:'Monthly', category:'Giving',         paid:false },
-    { name:'Gas',         amount:250,  day:null, auto:'No',  freq:'Monthly', category:'Transportation', paid:false },
-    { name:'Groceries',   amount:500,  day:null, auto:'No',  freq:'Monthly', category:'Food',           paid:false },
-  ];
+  var db          = (window.supabase || window.supabasejs).createClient(SUPABASE_URL, SUPABASE_KEY);
+  var currentUser = null;
+  var bills       = [];
+  var editingIndex = null;
+
+  document.addEventListener('DOMContentLoaded', function() {
+    db.auth.getSession().then(function(res) {
+      if (!res.data || !res.data.session) { window.location.replace('login.html'); return; }
+      currentUser = res.data.session.user;
+      loadBills();
+    });
+  });
+
+  function loadBills() {
+    db.from('bills').select('*').eq('user_id', currentUser.id).order('due_day', { ascending: true, nullsFirst: false })
+      .then(function(res) {
+        bills = (res.data || []).map(function(b) {
+          return {
+            id:       b.id,
+            name:     b.name,
+            amount:   parseFloat(b.amount),
+            day:      b.due_day || null,
+            auto:     b.auto_pay || 'No',
+            freq:     b.frequency || 'Monthly',
+            category: b.category || 'Other',
+            paid:     b.paid || false
+          };
+        });
+        renderSummary();
+        renderTable();
+      });
+  }
 
   function fmt(n) { return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 }); }
   function ordinal(d) { if (!d) return '—'; return d + (d===1?'st':d===2?'nd':d===3?'rd':'th'); }
 
   function renderSummary() {
-    const fixed    = bills.filter(b => b.day).reduce((s,b) => s + b.amount, 0);
-    const floating = bills.filter(b => !b.day).reduce((s,b) => s + b.amount, 0);
+    var fixed    = bills.filter(function(b){ return b.day;  }).reduce(function(s,b){ return s+b.amount; }, 0);
+    var floating = bills.filter(function(b){ return !b.day; }).reduce(function(s,b){ return s+b.amount; }, 0);
     document.getElementById('monthly-total').textContent  = fmt(fixed);
     document.getElementById('floating-total').textContent = fmt(floating);
   }
 
-  let editingIndex = null;
-
   function renderTable() {
-    const cats = ['Housing','Utilities','Insurance','Transportation','Food','Giving','Other'];
-    document.getElementById('bills-tbody').innerHTML = bills.map((b, i) => {
-      const catClass = b.category === 'Housing' ? 'badge-red' : b.category === 'Insurance' ? 'badge-amber' : b.category === 'Giving' ? 'badge-green' : 'badge-gray';
-      const dueStr   = b.day ? ordinal(b.day) : '<span style="color:var(--text3);">Floating</span>';
+    var cats = ['Housing','Utilities','Insurance','Transportation','Food','Giving','Other'];
+    if (!bills.length) {
+      document.getElementById('bills-tbody').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3);">No bills yet — add your first bill above.</td></tr>';
+      return;
+    }
+    document.getElementById('bills-tbody').innerHTML = bills.map(function(b, i) {
+      var catClass = b.category==='Housing'?'badge-red':b.category==='Insurance'?'badge-amber':b.category==='Giving'?'badge-green':'badge-gray';
+      var dueStr   = b.day ? ordinal(b.day) : '<span style="color:var(--text3);">Floating</span>';
 
       if (editingIndex === i) {
-        return `<tr class="edit-row">
-          <td><input type="text" id="edit-name" value="${b.name}"></td>
-          <td><input type="number" id="edit-amount" value="${b.amount}" min="0" step="0.01" style="width:80px;"></td>
-          <td><input type="number" id="edit-day" value="${b.day||''}" placeholder="blank=floating" min="1" max="31" style="width:80px;"></td>
-          <td><select id="edit-auto"><option ${b.auto==='No'?'selected':''}>No</option><option ${b.auto==='Yes'?'selected':''}>Yes</option></select></td>
-          <td><select id="edit-freq"><option ${b.freq==='Monthly'?'selected':''}>Monthly</option><option ${b.freq==='Weekly'?'selected':''}>Weekly</option><option ${b.freq==='Yearly'?'selected':''}>Yearly</option></select></td>
-          <td><select id="edit-cat">${cats.map(c=>`<option ${b.category===c?'selected':''}>${c}</option>`).join('')}</select></td>
-          <td><span class="badge ${b.paid?'badge-green':'badge-amber'}">${b.paid?'Paid':'Unpaid'}</span></td>
-          <td style="display:flex; gap:6px;">
-            <button class="btn btn-primary btn-sm" onclick="saveEdit(${i})">Save</button>
-            <button class="btn btn-sm" style="background:var(--bg2);color:var(--text2);border:none;" onclick="cancelEdit()">Cancel</button>
-          </td>
-        </tr>`;
+        return '<tr class="edit-row">' +
+          '<td><input type="text" id="edit-name" value="' + b.name + '"></td>' +
+          '<td><input type="number" id="edit-amount" value="' + b.amount + '" min="0" step="0.01" style="width:80px;"></td>' +
+          '<td><input type="number" id="edit-day" value="' + (b.day||'') + '" placeholder="blank=floating" min="1" max="31" style="width:80px;"></td>' +
+          '<td><select id="edit-auto"><option' + (b.auto==='No'?' selected':'') + '>No</option><option' + (b.auto==='Yes'?' selected':'') + '>Yes</option></select></td>' +
+          '<td><select id="edit-freq"><option' + (b.freq==='Monthly'?' selected':'') + '>Monthly</option><option' + (b.freq==='Weekly'?' selected':'') + '>Weekly</option><option' + (b.freq==='Yearly'?' selected':'') + '>Yearly</option></select></td>' +
+          '<td><select id="edit-cat">' + cats.map(function(c){ return '<option' + (b.category===c?' selected':'') + '>' + c + '</option>'; }).join('') + '</select></td>' +
+          '<td><span class="badge ' + (b.paid?'badge-green':'badge-amber') + '">' + (b.paid?'Paid':'Unpaid') + '</span></td>' +
+          '<td style="display:flex;gap:6px;">' +
+            '<button class="btn btn-primary btn-sm" onclick="saveEdit(' + i + ')">Save</button>' +
+            '<button class="btn btn-sm" style="background:var(--bg2);color:var(--text2);border:none;" onclick="cancelEdit()">Cancel</button>' +
+          '</td>' +
+        '</tr>';
       }
 
-      return `<tr style="${b.paid ? 'opacity:0.5;' : ''}">
-        <td style="font-weight:500;">${b.name}</td>
-        <td style="font-weight:600;">${fmt(b.amount)}</td>
-        <td>${dueStr}</td>
-        <td><span class="badge ${b.auto==='Yes' ? 'badge-green' : 'badge-gray'}">${b.auto}</span></td>
-        <td style="color:var(--text2);">${b.freq}</td>
-        <td><span class="badge ${catClass}">${b.category}</span></td>
-        <td><span class="badge ${b.paid ? 'badge-green' : 'badge-amber'}">${b.paid ? 'Paid' : 'Unpaid'}</span></td>
-        <td style="display:flex; gap:6px; flex-wrap:wrap;">
-          <button class="btn btn-outline btn-sm" onclick="startEdit(${i})">Edit</button>
-          <button class="btn btn-outline btn-sm" onclick="togglePaid(${i})">${b.paid ? 'Unmark' : 'Mark paid'}</button>
-          <button class="btn btn-sm" style="background:var(--red-l); color:var(--red); border:none;" onclick="removeBill(${i})">Remove</button>
-        </td>
-      </tr>`;
+      return '<tr style="' + (b.paid?'opacity:0.5;':'') + '">' +
+        '<td style="font-weight:500;">' + b.name + '</td>' +
+        '<td style="font-weight:600;">' + fmt(b.amount) + '</td>' +
+        '<td>' + dueStr + '</td>' +
+        '<td><span class="badge ' + (b.auto==='Yes'?'badge-green':'badge-gray') + '">' + b.auto + '</span></td>' +
+        '<td style="color:var(--text2);">' + b.freq + '</td>' +
+        '<td><span class="badge ' + catClass + '">' + b.category + '</span></td>' +
+        '<td><span class="badge ' + (b.paid?'badge-green':'badge-amber') + '">' + (b.paid?'Paid':'Unpaid') + '</span></td>' +
+        '<td style="display:flex;gap:6px;flex-wrap:wrap;">' +
+          '<button class="btn btn-outline btn-sm" onclick="startEdit(' + i + ')">Edit</button>' +
+          '<button class="btn btn-outline btn-sm" onclick="togglePaid(' + i + ')">' + (b.paid?'Unmark':'Mark paid') + '</button>' +
+          '<button class="btn btn-sm" style="background:var(--red-l);color:var(--red);border:none;" onclick="removeBill(' + i + ')">Remove</button>' +
+        '</td>' +
+      '</tr>';
     }).join('');
   }
 
@@ -185,40 +208,59 @@
   function cancelEdit()  { editingIndex = null; renderTable(); }
 
   function saveEdit(i) {
-    const name   = document.getElementById('edit-name').value.trim();
-    const amount = parseFloat(document.getElementById('edit-amount').value);
-    const day    = parseInt(document.getElementById('edit-day').value) || null;
-    const auto   = document.getElementById('edit-auto').value;
-    const freq   = document.getElementById('edit-freq').value;
-    const cat    = document.getElementById('edit-cat').value;
+    var name   = document.getElementById('edit-name').value.trim();
+    var amount = parseFloat(document.getElementById('edit-amount').value);
+    var day    = parseInt(document.getElementById('edit-day').value) || null;
+    var auto   = document.getElementById('edit-auto').value;
+    var freq   = document.getElementById('edit-freq').value;
+    var cat    = document.getElementById('edit-cat').value;
     if (!name || !amount) { alert('Name and amount are required.'); return; }
-    bills[i] = { ...bills[i], name, amount, day, auto, freq, category:cat };
-    editingIndex = null;
-    renderSummary();
-    renderTable();
+    var bill   = bills[i];
+    db.from('bills').update({ name:name, amount:amount, due_day:day, auto_pay:auto, frequency:freq, category:cat }).eq('id', bill.id)
+      .then(function(res) {
+        if (res.error) { alert('Error saving: ' + res.error.message); return; }
+        bills[i] = { id:bill.id, name:name, amount:amount, day:day, auto:auto, freq:freq, category:cat, paid:bill.paid };
+        editingIndex = null;
+        renderSummary();
+        renderTable();
+      });
   }
 
-  function togglePaid(i) { bills[i].paid = !bills[i].paid; renderTable(); }
-  function removeBill(i) { bills.splice(i, 1); renderSummary(); renderTable(); }
+  function togglePaid(i) {
+    var bill = bills[i];
+    db.from('bills').update({ paid: !bill.paid }).eq('id', bill.id).then(function() {
+      bills[i].paid = !bill.paid;
+      renderTable();
+    });
+  }
+
+  function removeBill(i) {
+    var bill = bills[i];
+    if (!confirm('Remove ' + bill.name + '?')) return;
+    db.from('bills').delete().eq('id', bill.id).then(function() {
+      bills.splice(i, 1);
+      renderSummary();
+      renderTable();
+    });
+  }
 
   function addBill() {
-    const name   = document.getElementById('bill-name').value.trim();
-    const amount = parseFloat(document.getElementById('bill-amount').value);
-    const due    = parseInt(document.getElementById('bill-due').value) || null;
-    const auto   = document.getElementById('bill-auto').value;
-    const freq   = document.getElementById('bill-freq').value;
-    const cat    = document.getElementById('bill-cat').value;
+    var name   = document.getElementById('bill-name').value.trim();
+    var amount = parseFloat(document.getElementById('bill-amount').value);
+    var due    = parseInt(document.getElementById('bill-due').value) || null;
+    var auto   = document.getElementById('bill-auto').value;
+    var freq   = document.getElementById('bill-freq').value;
+    var cat    = document.getElementById('bill-cat').value;
     if (!name || !amount) { alert('Please enter a name and amount.'); return; }
-    bills.push({ name, amount, day:due, auto, freq, category:cat, paid:false });
-    document.getElementById('bill-name').value   = '';
-    document.getElementById('bill-amount').value = '';
-    document.getElementById('bill-due').value    = '';
-    renderSummary();
-    renderTable();
+    db.from('bills').insert({ user_id:currentUser.id, name:name, amount:amount, due_day:due, auto_pay:auto, frequency:freq, category:cat, paid:false })
+      .then(function(res) {
+        if (res.error) { alert('Error adding bill: ' + res.error.message); return; }
+        document.getElementById('bill-name').value   = '';
+        document.getElementById('bill-amount').value = '';
+        document.getElementById('bill-due').value    = '';
+        loadBills();
+      });
   }
-
-  renderSummary();
-  renderTable();
 </script>
 
 </body>

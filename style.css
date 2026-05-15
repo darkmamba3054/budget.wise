@@ -21,6 +21,10 @@
   --radius-sm: 8px;
   --shadow:    0 2px 12px rgba(42,35,24,0.07);
   --shadow-md: 0 4px 24px rgba(42,35,24,0.11);
+  --gold:      #C9A84C;
+  --gold-l:    #FDF6E3;
+  --gold-m:    #EDD98A;
+  --gold-dark: #9A7B2E;
 }
 
 body {
@@ -52,13 +56,17 @@ nav {
 .nav-brand {
   font-family: 'DM Serif Display', serif;
   font-size: 20px;
-  color: var(--green);
+  color: var(--text);
   text-decoration: none;
   padding: 16px 24px 16px 0;
   margin-right: 16px;
   border-right: 1px solid var(--border);
   white-space: nowrap;
+  letter-spacing: -0.3px;
 }
+
+.nav-brand span.brand-check { color: var(--green); }
+.nav-brand span.brand-mate  { color: var(--gold); }
 
 .nav-groups {
   display: flex;
@@ -291,7 +299,13 @@ tbody tr:hover td { background: var(--bg); }
 .badge-green  { background: var(--green-l);  color: var(--green); }
 .badge-amber  { background: var(--amber-l);  color: var(--amber); }
 .badge-red    { background: var(--red-l);    color: var(--red); }
-.badge-gray   { background: var(--bg2);      color: var(--text2); }
+.card-value.gold { color: var(--gold); }
+
+.badge-gold { background: var(--gold-l); color: var(--gold-dark); }
+
+/* Gold accent for priority/featured items */
+.gold-accent { border-color: var(--gold) !important; }
+.gold-accent .card-title { color: var(--gold-dark); }
 
 /* ── FORMS ── */
 .form-group { margin-bottom: 16px; }

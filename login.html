@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sign In — BudgetWise</title>
+  <title>Sign In — CheckMate Budget</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script>
@@ -15,7 +15,9 @@
     body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); }
     .auth-wrap { width: 100%; max-width: 420px; padding: 24px; }
     .auth-logo { text-align: center; margin-bottom: 28px; }
-    .auth-logo h1 { font-family: 'DM Serif Display', serif; font-size: 28px; color: var(--green); }
+    .auth-logo h1 { font-family: 'DM Serif Display', serif; font-size: 28px; color: var(--text); }
+    .auth-logo h1 .brand-check { color: var(--green); }
+    .auth-logo h1 .brand-mate  { color: var(--gold); }
     .auth-logo p { font-size: 14px; color: var(--text2); margin-top: 4px; }
     .auth-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow-md); }
     .tab-row { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
@@ -38,7 +40,7 @@
 
 <div class="auth-wrap">
   <div class="auth-logo">
-    <h1>🌿 BudgetWise</h1>
+    <h1>♟️ <span class="brand-check">Check</span><span class="brand-mate">Mate</span> Budget</h1>
     <p>Your personal finance tracker</p>
   </div>
 
