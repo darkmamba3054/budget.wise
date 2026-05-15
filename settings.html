@@ -5,7 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Settings — BudgetWise</title>
   <link rel="stylesheet" href="style.css">
-  <script type="module" src="auth-guard.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="supabase.js"></script>
+  <script src="auth-guard.js"></script>
+  
   <style>
     .settings-section { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 20px; }
     .settings-section h2 { font-family: 'DM Serif Display', serif; font-size: 20px; margin-bottom: 4px; }
@@ -113,128 +116,141 @@
   </div>
 </div>
 
-<script type="module">
-  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-  import { SUPABASE_URL, SUPABASE_KEY } from './supabase.js';
-  const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+<script>
+  var db = (window.supabase || window.supabasejs).createClient(SUPABASE_URL, SUPABASE_KEY);
+  var currentUser = null;
 
-  // Auth check
-  const { data:{ session } } = await db.auth.getSession();
-  if (!session) { window.location.href = 'login.html'; }
-  const user = session.user;
-
-  // Load profile
-  document.getElementById('profile-email').value = user.email;
-  document.getElementById('profile-name').value  = user.user_metadata?.full_name || '';
-
-  // Load partners
-  async function loadPartners() {
-    const { data: links } = await db.from('accountability_links')
-      .select('*, partner:partner_user_id(id, email, raw_user_meta_data)')
-      .eq('owner_user_id', user.id)
-      .eq('status', 'active');
-
-    const count = links?.length || 0;
-    document.getElementById('partner-count').textContent = `${count} / 3`;
-    document.getElementById('partner-bar').style.width = `${(count/3)*100}%`;
-    document.getElementById('generate-btn').disabled = count >= 3;
-
-    if (!count) {
-      document.getElementById('partners-list').innerHTML = '<div class="empty-partners">No accountability partners yet. Generate an invite link below to get started.</div>';
-    } else {
-      document.getElementById('partners-list').innerHTML = links.map(l => {
-        const name = l.partner?.raw_user_meta_data?.full_name || l.partner?.email || 'Unknown';
-        const initials = name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-        return `<div class="partner-card">
-          <div style="display:flex;align-items:center;gap:12px;">
-            <div class="partner-avatar">${initials}</div>
-            <div><div class="partner-name">${name}</div><div class="partner-email">${l.partner?.email||''}</div></div>
-          </div>
-          <button class="btn btn-sm" style="background:var(--red-l);color:var(--red);border:none;" onclick="removePartner('${l.id}')">Remove</button>
-        </div>`;
-      }).join('');
-    }
-  }
-
-  // Load accounts granting you access
-  async function loadGranted() {
-    const { data: links } = await db.from('accountability_links')
-      .select('*, owner:owner_user_id(id, email, raw_user_meta_data)')
-      .eq('partner_user_id', user.id)
-      .eq('status', 'active');
-
-    if (!links?.length) {
-      document.getElementById('granted-list').innerHTML = '<div class="empty-partners">No one has granted you access yet.</div>';
-    } else {
-      document.getElementById('granted-list').innerHTML = links.map(l => {
-        const name = l.owner?.raw_user_meta_data?.full_name || l.owner?.email || 'Unknown';
-        const initials = name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-        return `<div class="partner-card">
-          <div style="display:flex;align-items:center;gap:12px;">
-            <div class="partner-avatar" style="background:var(--amber);">${initials}</div>
-            <div><div class="partner-name">${name}</div><div class="partner-email">You can view their budget</div></div>
-          </div>
-          <span class="badge badge-green">Active</span>
-        </div>`;
-      }).join('');
-    }
-  }
-
-  window.generateInvite = async () => {
-    const token = crypto.randomUUID();
-    const name  = encodeURIComponent(document.getElementById('profile-name').value || user.email);
-    await db.from('accountability_links').insert({
-      owner_user_id: user.id,
-      invite_token: token,
-      status: 'pending'
+  document.addEventListener('DOMContentLoaded', function() {
+    db.auth.getSession().then(function(res) {
+      if (!res.data || !res.data.session) { window.location.replace('login.html'); return; }
+      currentUser = res.data.session.user;
+      document.getElementById('profile-email').value = currentUser.email;
+      document.getElementById('profile-name').value  = (currentUser.user_metadata && currentUser.user_metadata.full_name) || '';
+      loadPartners();
+      loadGranted();
     });
-    const link = `${window.location.origin}/login.html?invite=${token}&from=${name}`;
-    document.getElementById('invite-link-text').textContent = link;
-    document.getElementById('invite-result').style.display = 'block';
+  });
+
+  function loadPartners() {
+    db.from('accountability_links')
+      .select('*, partner:partner_user_id(id, email, raw_user_meta_data)')
+      .eq('owner_user_id', currentUser.id)
+      .eq('status', 'active')
+      .then(function(res) {
+        var links = res.data || [];
+        var count = links.length;
+        document.getElementById('partner-count').textContent = count + ' / 3';
+        document.getElementById('partner-bar').style.width = ((count/3)*100) + '%';
+        document.getElementById('generate-btn').disabled = count >= 3;
+
+        if (!count) {
+          document.getElementById('partners-list').innerHTML = '<div class="empty-partners">No accountability partners yet. Generate an invite link below to get started.</div>';
+        } else {
+          document.getElementById('partners-list').innerHTML = links.map(function(l) {
+            var partner  = l.partner || {};
+            var meta     = partner.raw_user_meta_data || {};
+            var name     = meta.full_name || partner.email || 'Unknown';
+            var initials = name.split(' ').map(function(w){ return w[0]; }).join('').toUpperCase().slice(0,2);
+            return '<div class="partner-card">' +
+              '<div style="display:flex;align-items:center;gap:12px;">' +
+                '<div class="partner-avatar">' + initials + '</div>' +
+                '<div><div class="partner-name">' + name + '</div><div class="partner-email">' + (partner.email||'') + '</div></div>' +
+              '</div>' +
+              '<button class="btn btn-sm" style="background:var(--red-l);color:var(--red);border:none;" onclick="removePartner(\'' + l.id + '\')">Remove</button>' +
+            '</div>';
+          }).join('');
+        }
+      });
+  }
+
+  function loadGranted() {
+    db.from('accountability_links')
+      .select('*, owner:owner_user_id(id, email, raw_user_meta_data)')
+      .eq('partner_user_id', currentUser.id)
+      .eq('status', 'active')
+      .then(function(res) {
+        var links = res.data || [];
+        if (!links.length) {
+          document.getElementById('granted-list').innerHTML = '<div class="empty-partners">No one has granted you access yet.</div>';
+        } else {
+          document.getElementById('granted-list').innerHTML = links.map(function(l) {
+            var owner    = l.owner || {};
+            var meta     = owner.raw_user_meta_data || {};
+            var name     = meta.full_name || owner.email || 'Unknown';
+            var initials = name.split(' ').map(function(w){ return w[0]; }).join('').toUpperCase().slice(0,2);
+            return '<div class="partner-card">' +
+              '<div style="display:flex;align-items:center;gap:12px;">' +
+                '<div class="partner-avatar" style="background:var(--amber);">' + initials + '</div>' +
+                '<div><div class="partner-name">' + name + '</div><div class="partner-email">You can view their budget</div></div>' +
+              '</div>' +
+              '<span class="badge badge-green">Active</span>' +
+            '</div>';
+          }).join('');
+        }
+      });
+  }
+
+  window.generateInvite = function() {
+    var token = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, function(c) {
+      return (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16);
+    });
+    var name = encodeURIComponent(document.getElementById('profile-name').value || currentUser.email);
+    db.from('accountability_links').insert({
+      owner_user_id: currentUser.id,
+      invite_token:  token,
+      status:        'pending'
+    }).then(function(res) {
+      if (res.error) { alert('Error generating invite: ' + res.error.message); return; }
+      var link = window.location.origin + '/login.html?invite=' + token + '&from=' + name;
+      document.getElementById('invite-link-text').textContent = link;
+      document.getElementById('invite-result').style.display = 'block';
+    });
   };
 
-  window.copyInvite = () => {
-    const link = document.getElementById('invite-link-text').textContent;
-    navigator.clipboard.writeText(link);
-    const btn = document.querySelector('[onclick="copyInvite()"]');
-    btn.textContent = '✓ Copied!';
-    setTimeout(() => btn.textContent = '📋 Copy link', 2000);
+  window.copyInvite = function() {
+    var link = document.getElementById('invite-link-text').textContent;
+    navigator.clipboard.writeText(link).then(function() {
+      var btn = document.querySelector('[onclick="copyInvite()"]');
+      btn.textContent = '✓ Copied!';
+      setTimeout(function() { btn.textContent = '📋 Copy link'; }, 2000);
+    });
   };
 
-  window.removePartner = async (linkId) => {
+  window.removePartner = function(linkId) {
     if (!confirm('Remove this accountability partner?')) return;
-    await db.from('accountability_links').delete().eq('id', linkId);
-    loadPartners();
+    db.from('accountability_links').delete().eq('id', linkId).then(function() {
+      loadPartners();
+    });
   };
 
-  window.saveProfile = async () => {
-    const name = document.getElementById('profile-name').value.trim();
-    const msg  = document.getElementById('profile-msg');
-    const { error } = await db.auth.updateUser({ data: { full_name: name } });
-    msg.style.display = 'block';
-    msg.style.color = error ? 'var(--red)' : 'var(--green)';
-    msg.textContent = error ? error.message : '✓ Profile saved!';
+  window.saveProfile = function() {
+    var name = document.getElementById('profile-name').value.trim();
+    var msg  = document.getElementById('profile-msg');
+    db.auth.updateUser({ data: { full_name: name } }).then(function(res) {
+      msg.style.display = 'block';
+      msg.style.color   = res.error ? 'var(--red)' : 'var(--green)';
+      msg.textContent   = res.error ? res.error.message : '✓ Profile saved!';
+    });
   };
 
-  window.changePassword = async () => {
-    const pass    = document.getElementById('new-password').value;
-    const confirm = document.getElementById('confirm-password').value;
-    const msg     = document.getElementById('password-msg');
+  window.changePassword = function() {
+    var pass    = document.getElementById('new-password').value;
+    var confirm = document.getElementById('confirm-password').value;
+    var msg     = document.getElementById('password-msg');
     if (pass !== confirm) { msg.style.display='block'; msg.style.color='var(--red)'; msg.textContent='Passwords do not match.'; return; }
     if (pass.length < 8)  { msg.style.display='block'; msg.style.color='var(--red)'; msg.textContent='Password must be at least 8 characters.'; return; }
-    const { error } = await db.auth.updateUser({ password: pass });
-    msg.style.display = 'block';
-    msg.style.color = error ? 'var(--red)' : 'var(--green)';
-    msg.textContent = error ? error.message : '✓ Password updated!';
+    db.auth.updateUser({ password: pass }).then(function(res) {
+      msg.style.display = 'block';
+      msg.style.color   = res.error ? 'var(--red)' : 'var(--green)';
+      msg.textContent   = res.error ? res.error.message : '✓ Password updated!';
+    });
   };
 
-  window.signOut = async () => {
-    await db.auth.signOut();
-    window.location.href = 'login.html';
+  window.signOut = function() {
+    db.auth.signOut().then(function() {
+      window.location.href = 'login.html';
+    });
   };
-
-  loadPartners();
-  loadGranted();
 </script>
 </body>
 </html>
