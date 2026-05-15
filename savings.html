@@ -90,8 +90,8 @@
             '<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text2);"><span>' + pct + '% there</span><span>$' + rem.toLocaleString() + ' to go</span></div>' +
             '<div style="margin-top:14px;display:flex;gap:8px;align-items:center;">' +
               '<input type="number" placeholder="Add amount ($)" id="add-' + g.id + '" style="padding:8px 12px;font-size:13px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);width:160px;font-family:DM Sans,sans-serif;">' +
-              '<button class="btn btn-outline btn-sm" onclick="addToGoal('" + g.id + "',' + g.saved + ')">Add to goal</button>' +
-              '<button class="btn btn-danger btn-sm" style="margin-left:auto;" onclick="deleteGoal('" + g.id + "')">Remove</button>' +
+              '<button class="btn btn-outline btn-sm" onclick="addToGoal(\'' + g.id + '\',' + g.saved + ')">Add to goal</button>' +
+              '<button class="btn btn-danger btn-sm" style="margin-left:auto;" onclick="deleteGoal(\'' + g.id + '\')">Remove</button>' +
             '</div>' +
           '</div>';
         }).join('');
