@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sign In — BudgetWise</title>
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="supabase.js"></script>
+  <script src="auth-guard.js"></script>
   <style>
     body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); }
     .auth-wrap { width: 100%; max-width: 420px; padding: 24px; }
@@ -102,10 +105,8 @@
   </div>
 </div>
 
-<script type="module">
-  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-  import { SUPABASE_URL, SUPABASE_KEY } from './supabase.js';
-  const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+<script>
+  const db = supabasejs.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   // Check for invite token in URL
   const params = new URLSearchParams(window.location.search);
@@ -122,8 +123,11 @@
   }
 
   // Check if already logged in
-  const { data: { session } } = await db.auth.getSession();
-  if (session) window.location.href = 'index.html';
+  async function init() {
+    const { data: { session } } = await db.auth.getSession();
+    if (session) window.location.href = 'index.html';
+  }
+  init();
 
   window.switchTab = (tab) => {
     document.querySelectorAll('.auth-tab').forEach((t,i) => {
