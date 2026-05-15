@@ -66,10 +66,10 @@
 
   <!-- Paycheck setup -->
   <div class="pay-setup">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
       <div>
         <h2>Paycheck setup <span class="saved-badge" id="saved-badge" style="display:none;">✓ Saved</span></h2>
-        <p>Set your hours and take-home for each paycheck this month. Hit save and it will be remembered.</p>
+        <p>Enter your take-home for each paycheck this month and hit Save — the calendar will remember it.</p>
       </div>
       <button class="btn btn-primary" onclick="savePaychecks()">Save this month's paychecks</button>
     </div>
@@ -82,31 +82,19 @@
         </select>
       </div>
       <div class="form-group">
-        <label>6th — Hours worked</label>
-        <input type="number" id="hrs-6" placeholder="e.g. 96" min="0" max="168" step="1" oninput="updatePay6();renderAll();">
+        <label>6th paycheck take-home ($)</label>
+        <input type="number" id="pay-6" placeholder="e.g. 3109" min="0" step="1" oninput="renderAll();">
       </div>
       <div class="form-group">
-        <label>6th — Take-home ($)</label>
-        <input type="number" id="pay-6" placeholder="e.g. 3109" min="0" step="1" oninput="renderAll();">
+        <label>21st paycheck take-home ($)</label>
+        <input type="number" id="pay-21" placeholder="e.g. 2798" min="0" step="1" oninput="renderAll();">
       </div>
       <div class="form-group">
         <label>Current balance ($)</label>
         <input type="number" id="start-bal" placeholder="0" min="0" oninput="renderAll();">
       </div>
     </div>
-    <div class="pay-grid">
-      <div></div>
-      <div class="form-group">
-        <label>21st — Hours worked</label>
-        <input type="number" id="hrs-21" placeholder="e.g. 88" min="0" max="168" step="1" oninput="updatePay21();renderAll();">
-      </div>
-      <div class="form-group">
-        <label>21st — Take-home ($)</label>
-        <input type="number" id="pay-21" placeholder="e.g. 2798" min="0" step="1" oninput="renderAll();">
-      </div>
-      <div></div>
-    </div>
-    <div style="font-size:12px;color:var(--text3);">💡 Use the Paycheck Simulator to calculate your exact take-home, then enter it here.</div>
+    <div style="font-size:12px;color:var(--text3);">💡 Use the Paycheck Simulator under Money to calculate your exact take-home.</div>
   </div>
 
   <!-- Stats -->
@@ -213,10 +201,8 @@ function checkKey(period) {
 function loadMonthPaychecks() {
   var c6  = savedChecks[checkKey(6)];
   var c21 = savedChecks[checkKey(21)];
-  if (c6)  { document.getElementById('hrs-6').value  = c6.hours;  document.getElementById('pay-6').value  = c6.amount; }
-  else     { document.getElementById('hrs-6').value  = '';        document.getElementById('pay-6').value  = ''; }
-  if (c21) { document.getElementById('hrs-21').value = c21.hours; document.getElementById('pay-21').value = c21.amount; }
-  else     { document.getElementById('hrs-21').value = '';        document.getElementById('pay-21').value = ''; }
+  document.getElementById('pay-6').value  = c6  ? c6.amount  : '';
+  document.getElementById('pay-21').value = c21 ? c21.amount : '';
   var badge = document.getElementById('saved-badge');
   badge.style.display = (c6 || c21) ? 'inline-flex' : 'none';
   renderAll();
@@ -229,48 +215,20 @@ function updatePay6() {
 function updatePay21() {}
 
 function savePaychecks() {
-  var hrs6  = parseFloat(document.getElementById('hrs-6').value)  || 0;
   var pay6  = parseFloat(document.getElementById('pay-6').value)  || 0;
-  var hrs21 = parseFloat(document.getElementById('hrs-21').value) || 0;
   var pay21 = parseFloat(document.getElementById('pay-21').value) || 0;
-
-  if (!hrs6 && !pay6 && !hrs21 && !pay21) { alert('Please enter at least one paycheck amount.'); return; }
-
+  if (!pay6 && !pay21) { alert('Please enter at least one paycheck amount.'); return; }
   var saves = [];
-  if (hrs6 || pay6) {
-    saves.push(db.from('paychecks').upsert({
-      user_id: currentUser.id,
-      year:    currentYear,
-      month:   currentMonth + 1,
-      period:  6,
-      hours:   hrs6,
-      amount:  pay6
-    }, { onConflict: 'user_id,year,month,period' }));
-  }
-  if (hrs21 || pay21) {
-    saves.push(db.from('paychecks').upsert({
-      user_id: currentUser.id,
-      year:    currentYear,
-      month:   currentMonth + 1,
-      period:  21,
-      hours:   hrs21,
-      amount:  pay21
-    }, { onConflict: 'user_id,year,month,period' }));
-  }
-
+  if (pay6)  saves.push(db.from('paychecks').upsert({ user_id:currentUser.id, year:currentYear, month:currentMonth+1, period:6,  hours:0, amount:pay6  }, { onConflict:'user_id,year,month,period' }));
+  if (pay21) saves.push(db.from('paychecks').upsert({ user_id:currentUser.id, year:currentYear, month:currentMonth+1, period:21, hours:0, amount:pay21 }, { onConflict:'user_id,year,month,period' }));
   Promise.all(saves).then(function(results) {
-    var hasError = results.some(function(r){ return r.error; });
-    if (hasError) { alert('Error saving paychecks. Please try again.'); return; }
-
-    // Update local cache
-    if (hrs6 || pay6)   savedChecks[checkKey(6)]  = { hours:hrs6,  amount:pay6  };
-    if (hrs21 || pay21) savedChecks[checkKey(21)] = { hours:hrs21, amount:pay21 };
-
+    if (results.some(function(r){ return r.error; })) { alert('Error saving. Please try again.'); return; }
+    if (pay6)  savedChecks[checkKey(6)]  = { hours:0, amount:pay6  };
+    if (pay21) savedChecks[checkKey(21)] = { hours:0, amount:pay21 };
     var badge = document.getElementById('saved-badge');
     badge.style.display = 'inline-flex';
     badge.textContent = '✓ Saved!';
     setTimeout(function() { badge.textContent = '✓ Saved'; }, 2000);
-
     renderHistory();
     renderAll();
   });
@@ -286,14 +244,12 @@ function buildEvents(y, m) {
   var pay21   = parseFloat(document.getElementById('pay-21').value) || 0;
   var sched   = document.getElementById('pay-schedule').value;
   var dim     = new Date(y, m+1, 0).getDate();
-  var hrs6    = document.getElementById('hrs-6').value  || '?';
-  var hrs21   = document.getElementById('hrs-21').value || '?';
 
   function addEvent(k, ev) { if (!events[k]) events[k] = []; events[k].push(ev); }
 
   if (sched === 'bimonthly') {
-    if (pay6  && 6  <= dim) addEvent(dateKey(y,m,6),  { label:'💰 Payday (' + hrs6  + ' hrs)', amount:pay6,  type:'income' });
-    if (pay21 && 21 <= dim) addEvent(dateKey(y,m,21), { label:'💰 Payday (' + hrs21 + ' hrs)', amount:pay21, type:'income' });
+    if (pay6  && 6  <= dim) addEvent(dateKey(y,m,6),  { label:'💰 Payday', amount:pay6,  type:'income' });
+    if (pay21 && 21 <= dim) addEvent(dateKey(y,m,21), { label:'💰 Payday', amount:pay21, type:'income' });
   } else {
     var base = new Date(2026, 3, 6);
     var idx  = 0;
@@ -302,8 +258,7 @@ function buildEvents(y, m) {
       var diff = Math.round((dt - base) / 86400000);
       if (diff >= 0 && diff % 14 === 0) {
         var amt = idx % 2 === 0 ? pay6 : pay21;
-        var hrs = idx % 2 === 0 ? hrs6 : hrs21;
-        if (amt) addEvent(dateKey(y,m,d), { label:'💰 Payday (' + hrs + ' hrs)', amount:amt, type:'income' });
+        if (amt) addEvent(dateKey(y,m,d), { label:'💰 Payday', amount:amt, type:'income' });
         idx++;
       }
     }
@@ -498,7 +453,7 @@ function renderHistory() {
       html += '<div class="history-row">';
       html += '<div style="font-weight:500;">' + (isFirst ? monthNames[mo.month-1] + ' ' + mo.year : '') + '</div>';
       html += '<div><span class="badge badge-green">' + c.period + (c.period===6?'th':'st') + '</span></div>';
-      html += '<div style="color:var(--text2);">' + c.hours + ' hrs</div>';
+      html += '<div style="color:var(--text2);">—</div>';
       html += '<div style="font-weight:600;color:var(--green);">+' + fmt(c.amount) + '</div>';
       html += '<div style="text-align:right;font-weight:700;">' + (isFirst ? fmt(total) : '') + '</div>';
       html += '</div>';
