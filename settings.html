@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings — BudgetWise</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .settings-section { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 20px; }
+    .settings-section h2 { font-family: 'DM Serif Display', serif; font-size: 20px; margin-bottom: 4px; }
+    .settings-section p { font-size: 13px; color: var(--text2); margin-bottom: 20px; }
+    .invite-box { background: var(--green-l); border: 1px solid var(--green-m); border-radius: var(--radius-sm); padding: 16px; }
+    .invite-link { font-family: var(--font-mono, monospace); font-size: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; word-break: break-all; color: var(--text2); margin: 10px 0; }
+    .partner-card { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--bg2); }
+    .partner-card:last-child { border-bottom: none; }
+    .partner-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--green); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; flex-shrink: 0; }
+    .partner-name { font-weight: 500; font-size: 14px; }
+    .partner-email { font-size: 12px; color: var(--text3); }
+    .empty-partners { text-align: center; padding: 24px; color: var(--text3); font-size: 14px; }
+    .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .danger-zone { border-color: var(--red); }
+    .danger-zone h2 { color: var(--red); }
+    .limit-bar { background: var(--bg2); border-radius: 99px; height: 6px; overflow: hidden; margin-top: 6px; }
+    .limit-fill { height: 100%; border-radius: 99px; background: var(--green); }
+  </style>
+</head>
+<body>
+<script src="nav.js"></script>
+<div class="page">
+  <div class="page-header">
+    <h1>Settings</h1>
+    <p>Manage your account, accountability partners, and preferences.</p>
+  </div>
+
+  <!-- Profile -->
+  <div class="settings-section">
+    <h2>Your profile</h2>
+    <p>Update your name and email address.</p>
+    <div class="profile-grid">
+      <div class="form-group">
+        <label>Full name</label>
+        <input type="text" id="profile-name" placeholder="Your name">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="profile-email" placeholder="your@email.com" disabled style="opacity:0.6;">
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="saveProfile()">Save profile</button>
+    <div id="profile-msg" style="font-size:13px;margin-top:8px;display:none;"></div>
+  </div>
+
+  <!-- Accountability partners -->
+  <div class="settings-section">
+    <h2>Accountability partners</h2>
+    <p>Invite up to 3 people to view your budget and comment on your purchase decisions.</p>
+
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px; font-weight:500; color:var(--text2); margin-bottom:4px;">Partners used</div>
+      <div style="font-size:22px; font-weight:600;" id="partner-count">0 / 3</div>
+      <div class="limit-bar"><div class="limit-fill" id="partner-bar" style="width:0%"></div></div>
+    </div>
+
+    <div id="partners-list" style="margin-bottom:20px;"></div>
+
+    <div class="invite-box" id="invite-section">
+      <div style="font-size:14px; font-weight:600; color:var(--green); margin-bottom:6px;">Invite a new partner</div>
+      <div style="font-size:13px; color:#2a5c3f; margin-bottom:12px;">Generate a link and share it however you like — text, iMessage, email, etc. Anyone with this link can sign up and connect to your account as an accountability partner.</div>
+      <button class="btn btn-primary btn-sm" onclick="generateInvite()" id="generate-btn">Generate invite link</button>
+      <div id="invite-result" style="display:none; margin-top:12px;">
+        <div style="font-size:12px; font-weight:500; color:var(--text2); margin-bottom:4px;">Your invite link — share this:</div>
+        <div class="invite-link" id="invite-link-text"></div>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button class="btn btn-primary btn-sm" onclick="copyInvite()">📋 Copy link</button>
+          <button class="btn btn-outline btn-sm" onclick="generateInvite()">New link</button>
+        </div>
+        <div style="font-size:11px; color:var(--text3); margin-top:8px;">This link expires in 7 days. Each link can only be used once.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Accounts granting you access -->
+  <div class="settings-section">
+    <h2>Accounts you can view</h2>
+    <p>These people have granted you accountability partner access to their data.</p>
+    <div id="granted-list"></div>
+  </div>
+
+  <!-- Password -->
+  <div class="settings-section">
+    <h2>Change password</h2>
+    <p>Update your password at any time.</p>
+    <div class="profile-grid">
+      <div class="form-group">
+        <label>New password</label>
+        <input type="password" id="new-password" placeholder="At least 8 characters">
+      </div>
+      <div class="form-group">
+        <label>Confirm new password</label>
+        <input type="password" id="confirm-password" placeholder="Repeat password">
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="changePassword()">Update password</button>
+    <div id="password-msg" style="font-size:13px;margin-top:8px;display:none;"></div>
+  </div>
+
+  <!-- Sign out -->
+  <div class="settings-section danger-zone">
+    <h2>Sign out</h2>
+    <p>Sign out of your BudgetWise account on this device.</p>
+    <button class="btn" style="background:var(--red-l);color:var(--red);border:1px solid #f5bbb4;" onclick="signOut()">Sign out</button>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+  import { SUPABASE_URL, SUPABASE_KEY } from './supabase.js';
+  const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // Auth check
+  const { data:{ session } } = await db.auth.getSession();
+  if (!session) { window.location.href = 'login.html'; }
+  const user = session.user;
+
+  // Load profile
+  document.getElementById('profile-email').value = user.email;
+  document.getElementById('profile-name').value  = user.user_metadata?.full_name || '';
+
+  // Load partners
+  async function loadPartners() {
+    const { data: links } = await db.from('accountability_links')
+      .select('*, partner:partner_user_id(id, email, raw_user_meta_data)')
+      .eq('owner_user_id', user.id)
+      .eq('status', 'active');
+
+    const count = links?.length || 0;
+    document.getElementById('partner-count').textContent = `${count} / 3`;
+    document.getElementById('partner-bar').style.width = `${(count/3)*100}%`;
+    document.getElementById('generate-btn').disabled = count >= 3;
+
+    if (!count) {
+      document.getElementById('partners-list').innerHTML = '<div class="empty-partners">No accountability partners yet. Generate an invite link below to get started.</div>';
+    } else {
+      document.getElementById('partners-list').innerHTML = links.map(l => {
+        const name = l.partner?.raw_user_meta_data?.full_name || l.partner?.email || 'Unknown';
+        const initials = name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+        return `<div class="partner-card">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div class="partner-avatar">${initials}</div>
+            <div><div class="partner-name">${name}</div><div class="partner-email">${l.partner?.email||''}</div></div>
+          </div>
+          <button class="btn btn-sm" style="background:var(--red-l);color:var(--red);border:none;" onclick="removePartner('${l.id}')">Remove</button>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // Load accounts granting you access
+  async function loadGranted() {
+    const { data: links } = await db.from('accountability_links')
+      .select('*, owner:owner_user_id(id, email, raw_user_meta_data)')
+      .eq('partner_user_id', user.id)
+      .eq('status', 'active');
+
+    if (!links?.length) {
+      document.getElementById('granted-list').innerHTML = '<div class="empty-partners">No one has granted you access yet.</div>';
+    } else {
+      document.getElementById('granted-list').innerHTML = links.map(l => {
+        const name = l.owner?.raw_user_meta_data?.full_name || l.owner?.email || 'Unknown';
+        const initials = name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+        return `<div class="partner-card">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div class="partner-avatar" style="background:var(--amber);">${initials}</div>
+            <div><div class="partner-name">${name}</div><div class="partner-email">You can view their budget</div></div>
+          </div>
+          <span class="badge badge-green">Active</span>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  window.generateInvite = async () => {
+    const token = crypto.randomUUID();
+    const name  = encodeURIComponent(document.getElementById('profile-name').value || user.email);
+    await db.from('accountability_links').insert({
+      owner_user_id: user.id,
+      invite_token: token,
+      status: 'pending'
+    });
+    const link = `${window.location.origin}/login.html?invite=${token}&from=${name}`;
+    document.getElementById('invite-link-text').textContent = link;
+    document.getElementById('invite-result').style.display = 'block';
+  };
+
+  window.copyInvite = () => {
+    const link = document.getElementById('invite-link-text').textContent;
+    navigator.clipboard.writeText(link);
+    const btn = document.querySelector('[onclick="copyInvite()"]');
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => btn.textContent = '📋 Copy link', 2000);
+  };
+
+  window.removePartner = async (linkId) => {
+    if (!confirm('Remove this accountability partner?')) return;
+    await db.from('accountability_links').delete().eq('id', linkId);
+    loadPartners();
+  };
+
+  window.saveProfile = async () => {
+    const name = document.getElementById('profile-name').value.trim();
+    const msg  = document.getElementById('profile-msg');
+    const { error } = await db.auth.updateUser({ data: { full_name: name } });
+    msg.style.display = 'block';
+    msg.style.color = error ? 'var(--red)' : 'var(--green)';
+    msg.textContent = error ? error.message : '✓ Profile saved!';
+  };
+
+  window.changePassword = async () => {
+    const pass    = document.getElementById('new-password').value;
+    const confirm = document.getElementById('confirm-password').value;
+    const msg     = document.getElementById('password-msg');
+    if (pass !== confirm) { msg.style.display='block'; msg.style.color='var(--red)'; msg.textContent='Passwords do not match.'; return; }
+    if (pass.length < 8)  { msg.style.display='block'; msg.style.color='var(--red)'; msg.textContent='Password must be at least 8 characters.'; return; }
+    const { error } = await db.auth.updateUser({ password: pass });
+    msg.style.display = 'block';
+    msg.style.color = error ? 'var(--red)' : 'var(--green)';
+    msg.textContent = error ? error.message : '✓ Password updated!';
+  };
+
+  window.signOut = async () => {
+    await db.auth.signOut();
+    window.location.href = 'login.html';
+  };
+
+  loadPartners();
+  loadGranted();
+</script>
+</body>
+</html>

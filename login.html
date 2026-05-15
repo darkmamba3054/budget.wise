@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In — BudgetWise</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); }
+    .auth-wrap { width: 100%; max-width: 420px; padding: 24px; }
+    .auth-logo { text-align: center; margin-bottom: 28px; }
+    .auth-logo h1 { font-family: 'DM Serif Display', serif; font-size: 28px; color: var(--green); }
+    .auth-logo p { font-size: 14px; color: var(--text2); margin-top: 4px; }
+    .auth-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow-md); }
+    .auth-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+    .auth-tab { flex: 1; padding: 10px; text-align: center; font-size: 14px; font-weight: 500; color: var(--text2); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; }
+    .auth-tab.active { color: var(--green); border-bottom-color: var(--green); }
+    .auth-form { display: none; }
+    .auth-form.active { display: block; }
+    .auth-btn { width: 100%; padding: 12px; background: var(--green); color: white; border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; margin-top: 8px; transition: opacity 0.15s; }
+    .auth-btn:hover { opacity: 0.88; }
+    .auth-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .auth-msg { font-size: 13px; padding: 10px 14px; border-radius: var(--radius-sm); margin-top: 12px; display: none; }
+    .auth-msg.error { background: var(--red-l); color: var(--red); border: 1px solid #f5bbb4; }
+    .auth-msg.success { background: var(--green-l); color: var(--green); border: 1px solid var(--green-m); }
+    .forgot { text-align: right; margin-top: -8px; margin-bottom: 12px; }
+    .forgot a { font-size: 12px; color: var(--text2); text-decoration: none; }
+    .forgot a:hover { color: var(--green); }
+    .divider { text-align: center; font-size: 12px; color: var(--text3); margin: 16px 0; position: relative; }
+    .divider::before { content:''; position:absolute; top:50%; left:0; right:0; height:1px; background:var(--border); z-index:0; }
+    .divider span { background: var(--card); padding: 0 10px; position: relative; z-index: 1; }
+    .invite-banner { background: var(--green-l); border: 1px solid var(--green-m); border-radius: var(--radius-sm); padding: 12px 14px; font-size: 13px; color: #2a5c3f; margin-bottom: 16px; display: none; }
+    .invite-banner strong { font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<div class="auth-wrap">
+  <div class="auth-logo">
+    <h1>🌿 BudgetWise</h1>
+    <p>Your personal finance tracker</p>
+  </div>
+
+  <div class="invite-banner" id="invite-banner"></div>
+
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <div class="auth-tab active" onclick="switchTab('signin')">Sign in</div>
+      <div class="auth-tab" onclick="switchTab('signup')">Create account</div>
+    </div>
+
+    <!-- Sign in -->
+    <div class="auth-form active" id="form-signin">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="signin-email" placeholder="you@email.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="signin-password" placeholder="Your password" autocomplete="current-password">
+      </div>
+      <div class="forgot"><a href="#" onclick="showForgot()">Forgot password?</a></div>
+      <button class="auth-btn" id="signin-btn" onclick="signIn()">Sign in</button>
+      <div class="auth-msg" id="signin-msg"></div>
+    </div>
+
+    <!-- Sign up -->
+    <div class="auth-form" id="form-signup">
+      <div class="form-group">
+        <label>Your name</label>
+        <input type="text" id="signup-name" placeholder="e.g. Brandon">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="signup-email" placeholder="you@email.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="signup-password" placeholder="At least 8 characters" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label>Confirm password</label>
+        <input type="password" id="signup-confirm" placeholder="Repeat password" autocomplete="new-password">
+      </div>
+      <button class="auth-btn" id="signup-btn" onclick="signUp()">Create account</button>
+      <div class="auth-msg" id="signup-msg"></div>
+    </div>
+
+    <!-- Forgot password -->
+    <div class="auth-form" id="form-forgot">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">Enter your email and we'll send you a reset link.</p>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="forgot-email" placeholder="you@email.com">
+      </div>
+      <button class="auth-btn" onclick="resetPassword()">Send reset link</button>
+      <div class="auth-msg" id="forgot-msg"></div>
+      <div style="text-align:center;margin-top:14px;">
+        <a href="#" onclick="switchTab('signin')" style="font-size:13px;color:var(--text2);text-decoration:none;">Back to sign in</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+  import { SUPABASE_URL, SUPABASE_KEY } from './supabase.js';
+  const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // Check for invite token in URL
+  const params = new URLSearchParams(window.location.search);
+  const inviteToken = params.get('invite');
+  const inviterName = params.get('from');
+
+  if (inviteToken && inviterName) {
+    const banner = document.getElementById('invite-banner');
+    banner.style.display = 'block';
+    banner.innerHTML = `<strong>${decodeURIComponent(inviterName)}</strong> has invited you to be their accountability partner on BudgetWise. Create an account below to get started!`;
+    switchTab('signup');
+    localStorage.setItem('pendingInvite', inviteToken);
+    localStorage.setItem('inviterName', decodeURIComponent(inviterName));
+  }
+
+  // Check if already logged in
+  const { data: { session } } = await db.auth.getSession();
+  if (session) window.location.href = 'index.html';
+
+  window.switchTab = (tab) => {
+    document.querySelectorAll('.auth-tab').forEach((t,i) => {
+      t.classList.toggle('active', ['signin','signup','forgot'][i] === tab);
+    });
+    document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+    document.getElementById(`form-${tab}`).classList.add('active');
+  };
+
+  window.showForgot = () => switchTab('forgot');
+
+  window.signIn = async () => {
+    const email    = document.getElementById('signin-email').value.trim();
+    const password = document.getElementById('signin-password').value;
+    const btn      = document.getElementById('signin-btn');
+    const msg      = document.getElementById('signin-msg');
+    if (!email || !password) { showMsg(msg, 'Please fill in all fields.', 'error'); return; }
+    btn.disabled = true; btn.textContent = 'Signing in...';
+    const { error } = await db.auth.signInWithPassword({ email, password });
+    if (error) { showMsg(msg, error.message, 'error'); btn.disabled=false; btn.textContent='Sign in'; return; }
+    window.location.href = 'index.html';
+  };
+
+  window.signUp = async () => {
+    const name     = document.getElementById('signup-name').value.trim();
+    const email    = document.getElementById('signup-email').value.trim();
+    const password = document.getElementById('signup-password').value;
+    const confirm  = document.getElementById('signup-confirm').value;
+    const btn      = document.getElementById('signup-btn');
+    const msg      = document.getElementById('signup-msg');
+    if (!name || !email || !password) { showMsg(msg, 'Please fill in all fields.', 'error'); return; }
+    if (password !== confirm) { showMsg(msg, 'Passwords do not match.', 'error'); return; }
+    if (password.length < 8) { showMsg(msg, 'Password must be at least 8 characters.', 'error'); return; }
+    btn.disabled = true; btn.textContent = 'Creating account...';
+    const { data, error } = await db.auth.signUp({ email, password, options: { data: { full_name: name } } });
+    if (error) { showMsg(msg, error.message, 'error'); btn.disabled=false; btn.textContent='Create account'; return; }
+
+    // Handle pending invite
+    const pendingInvite = localStorage.getItem('pendingInvite');
+    if (pendingInvite && data.user) {
+      await db.from('accountability_links').update({ partner_user_id: data.user.id, status:'active' }).eq('invite_token', pendingInvite);
+      localStorage.removeItem('pendingInvite');
+      localStorage.removeItem('inviterName');
+    }
+
+    showMsg(msg, 'Account created! Check your email to confirm, then sign in.', 'success');
+    btn.disabled = false; btn.textContent = 'Create account';
+  };
+
+  window.resetPassword = async () => {
+    const email = document.getElementById('forgot-email').value.trim();
+    const msg   = document.getElementById('forgot-msg');
+    if (!email) { showMsg(msg, 'Please enter your email.', 'error'); return; }
+    const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/login.html' });
+    if (error) { showMsg(msg, error.message, 'error'); return; }
+    showMsg(msg, 'Reset link sent — check your email!', 'success');
+  };
+
+  function showMsg(el, text, type) {
+    el.textContent = text;
+    el.className = `auth-msg ${type}`;
+    el.style.display = 'block';
+  }
+</script>
+
+</body>
+</html>

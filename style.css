@@ -87,6 +87,15 @@ nav {
 .nav-links a:hover { color: var(--green); }
 .nav-links a.active { color: var(--green); border-bottom-color: var(--green); }
 
+.nav-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 16px;
+  border-left: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
 /* ── PAGE WRAPPER ── */
 .page {
   max-width: 1000px;
