@@ -107,105 +107,164 @@
     { key:'savings',   label:'Savings goal',      bg:'var(--green-l)', color:'var(--green)' },
   ];
 
+  var db = (window.supabase || window.supabasejs).createClient(SUPABASE_URL, SUPABASE_KEY);
+  var currentUser = null;
   var journalData = {};
+  var saveNoteTimer = null;
 
-  function key() { return `${currentYear}-${currentMonth+1}`; }
-  function getData() { if (!journalData[key()]) journalData[key()] = {note:'',tags:[],entries:[]}; return journalData[key()]; }
+  document.addEventListener('DOMContentLoaded', function() {
+    db.auth.getSession().then(function(res) {
+      if (!res.data || !res.data.session) { window.location.replace('login.html'); return; }
+      currentUser = res.data.session.user;
+      loadMonth();
+    });
+  });
 
-  function changeMonth(dir) {
-    currentMonth += dir;
-    if (currentMonth > 11) { currentMonth=0; currentYear++; }
-    if (currentMonth < 0)  { currentMonth=11; currentYear--; }
-    selectedEntryTags = [];
-    render();
+  function monthKey() { return currentYear + '-' + (currentMonth + 1); }
+
+  function loadMonth() {
+    document.getElementById('month-label').textContent = monthNames[currentMonth] + ' ' + currentYear;
+
+    // Load monthly summary note
+    db.from('journal_entries').select('*').eq('user_id', currentUser.id)
+      .eq('month', currentMonth + 1).eq('year', currentYear)
+      .then(function(res) {
+        var entry = res.data && res.data[0];
+        if (!journalData[monthKey()]) journalData[monthKey()] = { note:'', tags:[], entries:[], entryId:null };
+        if (entry) {
+          journalData[monthKey()].note    = entry.note || '';
+          journalData[monthKey()].tags    = entry.tags || [];
+          journalData[monthKey()].entryId = entry.id;
+        }
+        document.getElementById('main-note').value = journalData[monthKey()].note;
+        document.getElementById('main-note').oninput = scheduleSaveNote;
+        renderMonthTags();
+      });
+
+    // Load event log entries
+    db.from('journal_events').select('*').eq('user_id', currentUser.id)
+      .eq('month', currentMonth + 1).eq('year', currentYear)
+      .order('created_at', { ascending: false })
+      .then(function(res) {
+        if (!journalData[monthKey()]) journalData[monthKey()] = { note:'', tags:[], entries:[], entryId:null };
+        journalData[monthKey()].entries = (res.data || []).map(function(e) {
+          return { id:e.id, date:new Date(e.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}), text:e.text, tags:e.tags||[] };
+        });
+        renderEntries();
+        renderStats();
+      });
+  }
+
+  function scheduleSaveNote() {
+    clearTimeout(saveNoteTimer);
+    saveNoteTimer = setTimeout(saveNote, 1000);
+  }
+
+  function saveNote() {
+    var text = document.getElementById('main-note').value;
+    var mk   = monthKey();
+    if (!journalData[mk]) journalData[mk] = { note:'', tags:[], entries:[], entryId:null };
+    journalData[mk].note = text;
+    var tags = journalData[mk].tags || [];
+    if (journalData[mk].entryId) {
+      db.from('journal_entries').update({ note:text, tags:tags }).eq('id', journalData[mk].entryId).then(function(){});
+    } else {
+      db.from('journal_entries').insert({ user_id:currentUser.id, month:currentMonth+1, year:currentYear, note:text, tags:tags }).select()
+        .then(function(res) {
+          if (res.data && res.data[0]) journalData[mk].entryId = res.data[0].id;
+        });
+    }
   }
 
   function toggleMonthTag(t) {
-    const d = getData(), idx = d.tags.indexOf(t);
-    if (idx===-1) d.tags.push(t); else d.tags.splice(idx,1);
+    var mk = monthKey();
+    if (!journalData[mk]) journalData[mk] = { note:'', tags:[], entries:[], entryId:null };
+    var tags = journalData[mk].tags;
+    var idx  = tags.indexOf(t);
+    if (idx === -1) tags.push(t); else tags.splice(idx, 1);
     renderMonthTags();
+    saveNote();
   }
 
   function toggleEntryTag(t) {
-    const idx = selectedEntryTags.indexOf(t);
-    if (idx===-1) selectedEntryTags.push(t); else selectedEntryTags.splice(idx,1);
+    var idx = selectedEntryTags.indexOf(t);
+    if (idx === -1) selectedEntryTags.push(t); else selectedEntryTags.splice(idx, 1);
     renderQuickTags();
   }
 
   function addEntry() {
-    const text = document.getElementById('new-entry').value.trim();
+    var text = document.getElementById('new-entry').value.trim();
     if (!text) return;
-    const today = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
-    getData().entries.unshift({date:today,text,tags:[...selectedEntryTags]});
-    document.getElementById('new-entry').value='';
-    selectedEntryTags=[];
-    renderEntries();
-    renderQuickTags();
-    renderStats();
+    db.from('journal_events').insert({ user_id:currentUser.id, month:currentMonth+1, year:currentYear, text:text, tags:selectedEntryTags.slice() }).select()
+      .then(function(res) {
+        if (res.error) { alert('Error: ' + res.error.message); return; }
+        document.getElementById('new-entry').value = '';
+        selectedEntryTags = [];
+        renderQuickTags();
+        setTimeout(function() { loadMonth(); }, 300);
+      });
   }
 
-  function removeEntry(i) { getData().entries.splice(i,1); renderEntries(); renderStats(); }
-  function saveNote()     { getData().note = document.getElementById('main-note').value; }
+  function removeEntry(id) {
+    db.from('journal_events').delete().eq('id', id).then(function(res) {
+      if (res.error) { alert('Error: ' + res.error.message); return; }
+      setTimeout(function() { loadMonth(); }, 300);
+    });
+  }
 
-  function render() {
-    document.getElementById('month-label').textContent = `${monthNames[currentMonth]} ${currentYear}`;
-    const d = getData();
-    document.getElementById('main-note').value = d.note;
-    document.getElementById('main-note').oninput = saveNote;
-    renderStats();
-    renderMonthTags();
-    renderEntries();
-    renderQuickTags();
+  function changeMonth(dir) {
+    currentMonth += dir;
+    if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+    if (currentMonth < 0)  { currentMonth = 11; currentYear--; }
+    selectedEntryTags = [];
+    loadMonth();
   }
 
   function renderStats() {
-    const d = getData();
-    document.getElementById('month-stats').innerHTML = `
-      <div class="card"><div class="card-title">Entries this month</div><div class="card-value">${d.entries.length}</div></div>
-      <div class="card"><div class="card-title">Month tags</div><div class="card-value" style="font-size:18px;">${d.tags.length > 0 ? d.tags.join(', ') : 'None'}</div></div>
-      <div class="card"><div class="card-title">Last entry</div><div class="card-value" style="font-size:18px;">${d.entries.length ? d.entries[0].date : '—'}</div></div>
-    `;
+    var d = journalData[monthKey()] || { entries:[], tags:[] };
+    document.getElementById('month-stats').innerHTML =
+      '<div class="card"><div class="card-title">Entries this month</div><div class="card-value">' + d.entries.length + '</div></div>' +
+      '<div class="card"><div class="card-title">Month tags</div><div class="card-value" style="font-size:18px;">' + (d.tags.length > 0 ? d.tags.join(', ') : 'None') + '</div></div>' +
+      '<div class="card"><div class="card-title">Last entry</div><div class="card-value" style="font-size:18px;">' + (d.entries.length ? d.entries[0].date : '—') + '</div></div>';
   }
 
   function renderMonthTags() {
-    const d = getData();
-    ['overtime','short','emergency','debt','savings','medical'].forEach(t => {
-      const el = document.getElementById('mtag-'+t);
+    var d = journalData[monthKey()] || { tags:[] };
+    ['overtime','short','emergency','debt','savings','medical'].forEach(function(t) {
+      var el = document.getElementById('mtag-' + t);
       if (el) el.classList.toggle('on', d.tags.includes(t));
     });
   }
 
   function renderEntries() {
-    const d = getData();
-    if (d.entries.length === 0) {
+    var d = journalData[monthKey()] || { entries:[] };
+    if (!d.entries.length) {
       document.getElementById('entries-list').innerHTML = '<div style="padding:20px 16px;font-size:13px;color:var(--text3);">No entries yet — add your first note below.</div>';
       return;
     }
-    document.getElementById('entries-list').innerHTML = d.entries.map((e,i) => {
-      const tagHtml = (e.tags||[]).map(t => {
-        const tag = allTags.find(a=>a.key===t);
-        return tag ? `<span class="etag" style="background:${tag.bg};color:${tag.color};">${tag.label}</span>` : '';
+    document.getElementById('entries-list').innerHTML = d.entries.map(function(e) {
+      var tagHtml = (e.tags||[]).map(function(t) {
+        var tag = allTags.find(function(a){ return a.key===t; });
+        return tag ? '<span class="etag" style="background:' + tag.bg + ';color:' + tag.color + ';">' + tag.label + '</span>' : '';
       }).join('');
-      return `<div class="entry">
-        <div class="entry-meta">
-          <span class="entry-date">${e.date}</span>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <div class="entry-tags">${tagHtml}</div>
-            <button class="del-btn" onclick="removeEntry(${i})">×</button>
-          </div>
-        </div>
-        <div class="entry-text">${e.text}</div>
-      </div>`;
+      return '<div class="entry">' +
+        '<div class="entry-meta">' +
+          '<span class="entry-date">' + e.date + '</span>' +
+          '<div style="display:flex;align-items:center;gap:8px;">' +
+            '<div class="entry-tags">' + tagHtml + '</div>' +
+            '<button class="del-btn" onclick="removeEntry(\'' + e.id + '\')">×</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="entry-text">' + e.text + '</div>' +
+      '</div>';
     }).join('');
   }
 
   function renderQuickTags() {
-    document.getElementById('quick-tags').innerHTML = allTags.map(t =>
-      `<button class="qtag ${selectedEntryTags.includes(t.key)?'sel-'+t.key:''}" onclick="toggleEntryTag('${t.key}')">${t.label}</button>`
-    ).join('');
+    document.getElementById('quick-tags').innerHTML = allTags.map(function(t) {
+      return '<button class="qtag ' + (selectedEntryTags.includes(t.key)?'sel-'+t.key:'') + '" onclick="toggleEntryTag(\'' + t.key + '\')">' + t.label + '</button>';
+    }).join('');
   }
-
-  render();
 </script>
 </body>
 </html>
