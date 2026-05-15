@@ -1,2 +1,2 @@
-// auth-guard.js — disabled to prevent redirect loops
-// Authentication is handled by nav.js
+// auth-guard.js — disabled for now, nav.js handles auth
+// This file intentionally left minimal to prevent redirect loops
