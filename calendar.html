@@ -153,20 +153,26 @@
 </div>
 
 <script>
-  // Your real bills — day:null means no fixed date (shown as floating)
-  const bills = [
-    { label:'Cell Phone',  amount:160,   day:15,   category:'Housing'       },
-    { label:'Internet',    amount:160,   day:21,   category:'Utilities'     },
-    { label:'Car Payment', amount:1015,  day:8,    category:'Utilities'     },
-    { label:'Internet 2',  amount:200,   day:21,   category:'Utilities'     },
-    { label:'Insurance',   amount:202,   day:21,   category:'Insurance'     },
-    { label:'Diapers',     amount:140,   day:null, category:'Utilities'     },
-    { label:'Tithe',       amount:1000,  day:null, category:'Giving'        },
-    { label:'Gas',         amount:250,   day:null, category:'Transportation' },
-    { label:'Groceries',   amount:500,   day:null, category:'Food'          },
-  ];
+  var db = (window.supabase || window.supabasejs).createClient(SUPABASE_URL, SUPABASE_KEY);
+  var currentUser = null;
+  var bills = [];
+  var currentYear = new Date().getFullYear();
+  var currentMonth = new Date().getMonth();
+  var selectedDate = null;
 
-  var currentYear = 2026, currentMonth = 4, selectedDate = null;
+  document.addEventListener('DOMContentLoaded', function() {
+    db.auth.getSession().then(function(res) {
+      if (!res.data || !res.data.session) { window.location.replace('login.html'); return; }
+      currentUser = res.data.session.user;
+      db.from('bills').select('*').eq('user_id', currentUser.id).then(function(r) {
+        if (r.error) { console.error(r.error); return; }
+        bills = (r.data || []).map(function(b) {
+          return { label:b.name, amount:parseFloat(b.amount), day:b.due_day||null, category:b.category||'Other', split:b.split||false, splitP1:b.split_p1||null, splitP2:b.split_p2||null };
+        });
+        renderAll();
+      });
+    });
+  });
 
   function pad(n) { return String(n).padStart(2, '0'); }
   function dateKey(y, m, d) { return `${y}-${pad(m+1)}-${pad(d)}`; }
@@ -327,21 +333,6 @@
   </div>
 </div>
 
-<script>
-  // Your real bills — day:null means no fixed date (shown as floating)
-  const bills = [
-    { label:'Cell Phone',  amount:160,   day:15,   category:'Housing'       },
-    { label:'Internet',    amount:160,   day:21,   category:'Utilities'     },
-    { label:'Car Payment', amount:1015,  day:8,    category:'Utilities'     },
-    { label:'Internet 2',  amount:200,   day:21,   category:'Utilities'     },
-    { label:'Insurance',   amount:202,   day:21,   category:'Insurance'     },
-    { label:'Diapers',     amount:140,   day:null, category:'Utilities'     },
-    { label:'Tithe',       amount:1000,  day:null, category:'Giving'        },
-    { label:'Gas',         amount:250,   day:null, category:'Transportation' },
-    { label:'Groceries',   amount:500,   day:null, category:'Food'          },
-  ];
-
-  var currentYear = 2026, currentMonth = 4, selectedDate = null;
 
   function pad(n) { return String(n).padStart(2, '0'); }
   function dateKey(y, m, d) { return `${y}-${pad(m+1)}-${pad(d)}`; }
