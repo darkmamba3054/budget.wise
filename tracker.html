@@ -61,117 +61,177 @@
 </div>
 
 <script>
-  const months = ['Jan','Feb','Mar','Apr','May'];
-  var data = {
-    income:   [0, 0, 0, 0, 0],
-    bills:    [0, 0, 0, 0, 0],
-    spending: [0, 0, 0, 0, 0],
-  };
-  const billCats = [
-    { name:'Cell Phone',  vals:[160,160,160,160,160]      },
-    { name:'Internet',    vals:[160,160,160,160,160]      },
-    { name:'Car Payment', vals:[1015,1015,1015,1015,1015] },
-    { name:'Internet 2',  vals:[200,200,200,200,200]      },
-    { name:'Insurance',   vals:[202,202,202,202,202]      },
-    { name:'Diapers',     vals:[140,140,140,140,0]        },
-    { name:'Tithe',       vals:[1000,1000,1000,1000,0]    },
-    { name:'Gas',         vals:[250,250,250,250,0]        },
-    { name:'Groceries',   vals:[500,500,500,500,0]        },
-  ];
-  const spendCats = [
-    { name:'Housing',       vals:[900,900,900,900,900]    },
-    { name:'Food',          vals:[420,380,450,410,248]    },
-    { name:'Transport',     vals:[180,210,195,220,96]     },
-    { name:'Subscriptions', vals:[38,38,38,38,38]         },
-    { name:'Entertainment', vals:[60,45,80,30,0]          },
-    { name:'Health',        vals:[0,120,0,60,19]          },
-    { name:'Giving',        vals:[1000,1000,1000,1000,0]  },
-    { name:'Other',         vals:[180,35,110,70,0]        },
-  ];
+  var db = (window.supabase || window.supabasejs).createClient(SUPABASE_URL, SUPABASE_KEY);
+  var currentUser = null;
+  var activeChart = 'all';
+  var chartInst   = null;
+  var currentYear = new Date().getFullYear();
 
-  let activeChart = 'all', chartInst = null;
+  // Dynamic months — current year Jan through current month
+  var now         = new Date();
+  var numMonths   = now.getMonth() + 1; // how many months so far this year
+  var monthLabels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].slice(0, numMonths);
+
+  var data = {
+    income:   monthLabels.map(function(){ return 0; }),
+    bills:    monthLabels.map(function(){ return 0; }),
+    spending: monthLabels.map(function(){ return 0; }),
+  };
+
+  var billCats  = [];
+  var spendCats = [];
+
+  document.addEventListener('DOMContentLoaded', function() {
+    db.auth.getSession().then(function(res) {
+      if (!res.data || !res.data.session) { window.location.replace('login.html'); return; }
+      currentUser = res.data.session.user;
+      loadAll();
+    });
+  });
+
+  function loadAll() {
+    Promise.all([
+      db.from('paychecks').select('*').eq('user_id', currentUser.id).eq('year', currentYear),
+      db.from('bills').select('*').eq('user_id', currentUser.id),
+      db.from('expenses').select('*').eq('user_id', currentUser.id).gte('date', currentYear + '-01-01').lte('date', currentYear + '-12-31'),
+    ]).then(function(results) {
+      var paychecks = results[0].data || [];
+      var bills     = results[1].data || [];
+      var expenses  = results[2].data || [];
+
+      // Income — sum paychecks per month
+      data.income = monthLabels.map(function(_, i) {
+        var mo = i + 1;
+        return paychecks.filter(function(p){ return p.month === mo; }).reduce(function(s,p){ return s + parseFloat(p.amount); }, 0);
+      });
+
+      // Bills — total monthly bills (same each month)
+      var monthlyBillTotal = bills.reduce(function(s,b){ return s + parseFloat(b.amount); }, 0);
+      data.bills = monthLabels.map(function(){ return monthlyBillTotal; });
+
+      // Bill categories
+      var billMap = {};
+      bills.forEach(function(b) {
+        var name = b.name;
+        if (!billMap[name]) billMap[name] = monthLabels.map(function(){ return parseFloat(b.amount); });
+      });
+      billCats = Object.keys(billMap).map(function(name) {
+        return { name:name, vals:billMap[name] };
+      });
+
+      // Spending — sum expenses per month per category
+      var spendMap = {};
+      expenses.forEach(function(e) {
+        var mo  = new Date(e.date + 'T00:00:00').getMonth(); // 0-indexed
+        if (mo >= numMonths) return;
+        var cat = e.category || 'Other';
+        if (!spendMap[cat]) spendMap[cat] = monthLabels.map(function(){ return 0; });
+        spendMap[cat][mo] += parseFloat(e.amount);
+      });
+
+      data.spending = monthLabels.map(function(_, i) {
+        return Object.values(spendMap).reduce(function(s, vals){ return s + (vals[i]||0); }, 0);
+      });
+
+      spendCats = Object.keys(spendMap).map(function(cat) {
+        return { name:cat, vals:spendMap[cat] };
+      });
+
+      renderStats();
+      renderChart();
+      renderTable();
+    });
+  }
 
   function fmt(n) { return '$' + Math.round(n).toLocaleString(); }
 
   function chg(cur, prev, isIncome) {
     if (prev === null) return '<span class="neut">—</span>';
-    const d = cur - prev;
+    var d = cur - prev;
     if (d === 0) return '<span class="neut">—</span>';
-    if (isIncome) return `<span class="${d>0?'inc-up':'up'}">${d>0?'↑':'↓'} ${fmt(Math.abs(d))}</span>`;
-    return `<span class="${d>0?'up':'down'}">${d>0?'↑':'↓'} ${fmt(Math.abs(d))}</span>`;
+    if (isIncome) return '<span class="' + (d>0?'inc-up':'up') + '">' + (d>0?'↑':'↓') + ' ' + fmt(Math.abs(d)) + '</span>';
+    return '<span class="' + (d>0?'up':'down') + '">' + (d>0?'↑':'↓') + ' ' + fmt(Math.abs(d)) + '</span>';
   }
 
   function renderStats() {
-    const yi = data.income.reduce((s,v)=>s+v,0);
-    const yb = data.bills.reduce((s,v)=>s+v,0);
-    const ys = data.spending.reduce((s,v)=>s+v,0);
-    const yn = yi - yb - ys;
-    document.getElementById('top-stats').innerHTML = `
-      <div class="card"><div class="card-title">YTD income</div><div class="card-value green">${fmt(yi)}</div><div class="card-sub">Jan–May 2026</div></div>
-      <div class="card"><div class="card-title">YTD bills + spending</div><div class="card-value red">${fmt(yb+ys)}</div><div class="card-sub">All outgoing</div></div>
-      <div class="card"><div class="card-title">YTD net</div><div class="card-value ${yn>=0?'green':'red'}">${fmt(yn)}</div><div class="card-sub">Income minus everything</div></div>
-    `;
+    var yi = data.income.reduce(function(s,v){ return s+v; }, 0);
+    var yb = data.bills.reduce(function(s,v){ return s+v; }, 0);
+    var ys = data.spending.reduce(function(s,v){ return s+v; }, 0);
+    var yn = yi - yb - ys;
+    var lastMo = monthLabels[monthLabels.length-1];
+    document.getElementById('top-stats').innerHTML =
+      '<div class="card"><div class="card-title">YTD income</div><div class="card-value green">' + fmt(yi) + '</div><div class="card-sub">Jan–' + lastMo + ' ' + currentYear + '</div></div>' +
+      '<div class="card"><div class="card-title">YTD bills + spending</div><div class="card-value red">' + fmt(yb+ys) + '</div><div class="card-sub">All outgoing</div></div>' +
+      '<div class="card"><div class="card-title">YTD net</div><div class="card-value ' + (yn>=0?'green':'red') + '">' + fmt(yn) + '</div><div class="card-sub">Income minus everything</div></div>';
   }
 
   function renderChart() {
     document.getElementById('chart-tabs').innerHTML = [
       {key:'all',label:'All'},{key:'income',label:'Income'},{key:'bills',label:'Bills'},{key:'spending',label:'Spending'}
-    ].map(t=>`<button class="tab ${activeChart===t.key?'active':''}" onclick="setChart('${t.key}')">${t.label}</button>`).join('');
+    ].map(function(t){ return '<button class="tab ' + (activeChart===t.key?'active':'') + '" onclick="setChart(\'' + t.key + '\')">' + t.label + '</button>'; }).join('');
 
     if (chartInst) chartInst.destroy();
-    const ds = [];
+    var ds = [];
     if (activeChart==='all'||activeChart==='income')   ds.push({label:'Income',   data:data.income,   backgroundColor:'#3a7d5a', borderRadius:4});
     if (activeChart==='all'||activeChart==='bills')    ds.push({label:'Bills',    data:data.bills,    backgroundColor:'#c0442a', borderRadius:4});
     if (activeChart==='all'||activeChart==='spending') ds.push({label:'Spending', data:data.spending, backgroundColor:'#c97b2e', borderRadius:4});
 
     chartInst = new Chart(document.getElementById('mainChart').getContext('2d'), {
       type: 'bar',
-      data: { labels: months, datasets: ds },
+      data: { labels: monthLabels, datasets: ds },
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: {
           legend: { position:'bottom', labels:{ boxWidth:10, font:{ size:11 } } },
-          tooltip: { callbacks: { label: c => ' ' + fmt(c.raw) } }
+          tooltip: { callbacks: { label: function(c){ return ' ' + fmt(c.raw); } } }
         },
         scales: {
           x: { grid:{ display:false }, border:{ display:false } },
-          y: { grid:{ color:'rgba(0,0,0,0.05)' }, border:{ display:false }, ticks:{ callback: v => '$'+Math.round(v/1000)+'k' } }
+          y: { grid:{ color:'rgba(0,0,0,0.05)' }, border:{ display:false }, ticks:{ callback: function(v){ return '$'+Math.round(v/1000)+'k'; } } }
         }
       }
     });
   }
 
   function renderTable() {
-    const cols = months.length * 2 + 2;
-    const hdr  = months.map(m=>`<th>${m}</th><th>Chg</th>`).join('') + '<th>YTD</th>';
+    var cols = monthLabels.length * 2 + 2;
+    var hdr  = monthLabels.map(function(m){ return '<th>' + m + '</th><th>Chg</th>'; }).join('') + '<th>YTD</th>';
 
-    const catRows = (cats, isIncome) => cats.map(c => {
-      const ytd = c.vals.reduce((s,v)=>s+v,0);
-      return `<tr><td>${c.name}</td>${c.vals.map((v,i)=>`<td>${fmt(v)}</td><td>${chg(v,i>0?c.vals[i-1]:null,isIncome)}</td>`).join('')}<td class="${isIncome?'ytd-col':'ytd-col'}" style="background:var(--green-l);color:var(--green);font-weight:700;">${fmt(ytd)}</td></tr>`;
-    }).join('');
+    function catRows(cats, isIncome) {
+      return cats.map(function(c) {
+        var ytd = c.vals.reduce(function(s,v){ return s+v; }, 0);
+        return '<tr><td>' + c.name + '</td>' +
+          c.vals.map(function(v,i){ return '<td>' + fmt(v) + '</td><td>' + chg(v,i>0?c.vals[i-1]:null,isIncome) + '</td>'; }).join('') +
+          '<td style="background:var(--green-l);color:var(--green);font-weight:700;">' + fmt(ytd) + '</td></tr>';
+      }).join('');
+    }
 
-    const totRow = (label, vals, isIncome) => {
-      const ytd = vals.reduce((s,v)=>s+v,0);
-      return `<tr class="total-row"><td>${label}</td>${vals.map((v,i)=>`<td>${fmt(v)}</td><td>${chg(v,i>0?vals[i-1]:null,isIncome)}</td>`).join('')}<td style="background:var(--green-l);color:var(--green);font-weight:700;">${fmt(ytd)}</td></tr>`;
-    };
+    function totRow(label, vals, isIncome) {
+      var ytd = vals.reduce(function(s,v){ return s+v; }, 0);
+      return '<tr class="total-row"><td>' + label + '</td>' +
+        vals.map(function(v,i){ return '<td>' + fmt(v) + '</td><td>' + chg(v,i>0?vals[i-1]:null,isIncome) + '</td>'; }).join('') +
+        '<td style="background:var(--green-l);color:var(--green);font-weight:700;">' + fmt(ytd) + '</td></tr>';
+    }
 
-    const netVals = months.map((_,i) => data.income[i] - data.bills[i] - data.spending[i]);
-    const netYTD  = netVals.reduce((s,v)=>s+v,0);
-    const netRow  = `<tr class="total-row"><td>Net (income − all)</td>${netVals.map((v,i)=>`<td style="color:${v>=0?'var(--green)':'var(--red)'};font-weight:700;">${fmt(v)}</td><td>${chg(v,i>0?netVals[i-1]:null,true)}</td>`).join('')}<td style="background:${netYTD>=0?'var(--green-l)':'var(--red-l)'};color:${netYTD>=0?'var(--green)':'var(--red)'};font-weight:700;">${fmt(netYTD)}</td></tr>`;
+    var netVals = monthLabels.map(function(_,i){ return data.income[i] - data.bills[i] - data.spending[i]; });
+    var netYTD  = netVals.reduce(function(s,v){ return s+v; }, 0);
+    var netRow  = '<tr class="total-row"><td>Net (income − all)</td>' +
+      netVals.map(function(v,i){ return '<td style="color:' + (v>=0?'var(--green)':'var(--red)') + ';font-weight:700;">' + fmt(v) + '</td><td>' + chg(v,i>0?netVals[i-1]:null,true) + '</td>'; }).join('') +
+      '<td style="background:' + (netYTD>=0?'var(--green-l)':'var(--red-l)') + ';color:' + (netYTD>=0?'var(--green)':'var(--red)') + ';font-weight:700;">' + fmt(netYTD) + '</td></tr>';
 
-    document.getElementById('table-wrap').innerHTML = `<table>
-      <thead><tr><th>Category</th>${hdr}</tr></thead>
-      <tbody>
-        <tr class="section-div"><td colspan="${cols}">Income</td></tr>
-        <tr><td>Paychecks</td>${data.income.map((v,i)=>`<td>${fmt(v)}</td><td>${chg(v,i>0?data.income[i-1]:null,true)}</td>`).join('')}<td style="background:var(--green-l);color:var(--green);font-weight:700;">${fmt(data.income.reduce((s,v)=>s+v,0))}</td></tr>
-        <tr class="section-div"><td colspan="${cols}">Bills</td></tr>
-        ${catRows(billCats, false)}${totRow('Bills total', data.bills, false)}
-        <tr class="section-div"><td colspan="${cols}">Spending</td></tr>
-        ${catRows(spendCats, false)}${totRow('Spending total', data.spending, false)}
-        <tr class="section-div"><td colspan="${cols}">Summary</td></tr>
-        ${netRow}
-      </tbody>
-    </table>`;
+    var incomeYTD = data.income.reduce(function(s,v){ return s+v; }, 0);
+    document.getElementById('table-wrap').innerHTML = '<table>' +
+      '<thead><tr><th>Category</th>' + hdr + '</tr></thead>' +
+      '<tbody>' +
+        '<tr class="section-div"><td colspan="' + cols + '">Income</td></tr>' +
+        '<tr><td>Paychecks</td>' + data.income.map(function(v,i){ return '<td>' + fmt(v) + '</td><td>' + chg(v,i>0?data.income[i-1]:null,true) + '</td>'; }).join('') + '<td style="background:var(--green-l);color:var(--green);font-weight:700;">' + fmt(incomeYTD) + '</td></tr>' +
+        '<tr class="section-div"><td colspan="' + cols + '">Bills</td></tr>' +
+        catRows(billCats, false) + totRow('Bills total', data.bills, false) +
+        '<tr class="section-div"><td colspan="' + cols + '">Spending</td></tr>' +
+        catRows(spendCats, false) + totRow('Spending total', data.spending, false) +
+        '<tr class="section-div"><td colspan="' + cols + '">Summary</td></tr>' +
+        netRow +
+      '</tbody></table>';
   }
 
   function setChart(k) { activeChart = k; renderChart(); }
