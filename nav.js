@@ -34,44 +34,49 @@
 })();
 
 // Load user info after DOM ready using UMD Supabase
-document.addEventListener('DOMContentLoaded', async function() {
-  const navUser = document.getElementById('nav-user');
-  if (!navUser || typeof supabasejs === 'undefined') return;
+document.addEventListener('DOMContentLoaded', function() {
+  var navUser = document.getElementById('nav-user');
+  if (!navUser) return;
+
+  var supabaseLib = window.supabase || window.supabasejs;
+  if (!supabaseLib) { console.warn('Supabase not loaded in nav'); return; }
 
   try {
-    const db = supabasejs.createClient(SUPABASE_URL, SUPABASE_KEY);
-    const { data: { session } } = await db.auth.getSession();
+    var db = supabaseLib.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    if (!session) {
-      if (!location.pathname.includes('login.html')) {
-        window.location.replace('login.html');
+    db.auth.getSession().then(function(res) {
+      var session = res.data && res.data.session;
+
+      if (!session) {
+        if (!location.pathname.includes('login.html')) {
+          window.location.replace('login.html');
+        }
+        return;
       }
-      return;
-    }
 
-    window.__supabaseClient  = db;
-    window.__supabaseSession = session;
-    window.VIEWING_USER_ID   = session.user.id;
-    window.IS_OWN_ACCOUNT    = true;
+      window.__supabaseClient  = db;
+      window.__supabaseSession = session;
+      window.VIEWING_USER_ID   = session.user.id;
+      window.IS_OWN_ACCOUNT    = true;
 
-    const user     = session.user;
-    const name     = user.user_metadata?.full_name || user.email.split('@')[0];
-    const initials = name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+      var user     = session.user;
+      var name     = (user.user_metadata && user.user_metadata.full_name) || user.email.split('@')[0];
+      var initials = name.split(' ').map(function(w){ return w[0]; }).join('').toUpperCase().slice(0,2);
 
-    navUser.innerHTML = `
-      <div style="display:flex;align-items:center;gap:8px;">
-        <div style="width:32px;height:32px;border-radius:50%;background:var(--green);color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;">${initials}</div>
-        <span style="font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;">${name}</span>
-        <a href="settings.html" style="font-size:12px;color:var(--text2);text-decoration:none;margin-left:4px;">⚙️</a>
-        <a href="#" onclick="navSignOut()" style="font-size:12px;color:var(--red);text-decoration:none;margin-left:4px;font-weight:500;">Sign out</a>
-      </div>
-    `;
+      navUser.innerHTML =
+        '<div style="display:flex;align-items:center;gap:8px;">' +
+          '<div style="width:32px;height:32px;border-radius:50%;background:var(--green);color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;">' + initials + '</div>' +
+          '<span style="font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;">' + name + '</span>' +
+          '<a href="settings.html" style="font-size:12px;color:var(--text2);text-decoration:none;margin-left:4px;">⚙️</a>' +
+          '<a href="#" onclick="navSignOut()" style="font-size:12px;color:var(--red);text-decoration:none;margin-left:4px;font-weight:500;">Sign out</a>' +
+        '</div>';
 
-    window.navSignOut = function() {
-      db.auth.signOut().then(function() {
-        window.location.href = 'login.html';
-      });
-    };
+      window.navSignOut = function() {
+        db.auth.signOut().then(function() {
+          window.location.href = 'login.html';
+        });
+      };
+    });
   } catch(e) {
     console.error('Nav error:', e);
   }
