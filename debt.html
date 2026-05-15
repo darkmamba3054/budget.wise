@@ -217,8 +217,7 @@
     var newVal = !debts[i].settled;
     db.from('debts').update({ settled: newVal }).eq('id', debts[i].id).then(function(res) {
       if (res.error) { alert('Error: ' + res.error.message); return; }
-      debts[i].settled = newVal;
-      renderSummary(); renderTable();
+      setTimeout(function() { loadDebts(); }, 300);
     });
   }
 

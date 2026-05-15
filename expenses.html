@@ -141,8 +141,9 @@
   }
 
   function deleteExpense(id, btn) {
-    db.from('expenses').delete().eq('id', id).then(function() {
-      btn.closest('tr').remove();
+    db.from('expenses').delete().eq('id', id).then(function(res) {
+      if (res.error) { alert('Error removing: ' + res.error.message); return; }
+      setTimeout(function() { loadExpenses(); }, 300);
     });
   }
 </script>

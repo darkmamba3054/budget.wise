@@ -153,70 +153,112 @@
   }
   function setFilter(f, btn) {
     currentFilter = f;
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.filter-btn').forEach(function(b){ b.classList.remove('active'); });
     btn.classList.add('active');
     render();
   }
+  function fmt(n) { return '$' + Number(n).toLocaleString('en-US',{minimumFractionDigits:0}); }
+  function renderStats() {
+    var total   = debts.reduce(function(s,d){ return s+d.balance; }, 0);
+    var neg     = debts.filter(function(d){ return ['negotiating','offer-made','agreed'].includes(d.status); }).length;
+    var savings = debts.filter(function(d){ return d.ourOffer; }).reduce(function(s,d){ return s+(d.balance-parseFloat(d.ourOffer)); }, 0);
+    document.getElementById('stats').innerHTML =
+      '<div class="card"><div class="card-title">Total in collections</div><div class="card-value red">' + fmt(total) + '</div><div class="card-sub">' + debts.length + ' accounts</div></div>' +
+      '<div class="card"><div class="card-title">Negotiating</div><div class="card-value amber">' + neg + '</div><div class="card-sub">Active negotiations</div></div>' +
+      '<div class="card"><div class="card-title">Potential savings</div><div class="card-value green">' + fmt(savings) + '</div><div class="card-sub">If all offers accepted</div></div>';
+  }
+
+  function saveDebt(i) {
+    var d = debts[i];
+    db2.from('debts').update({
+      our_offer:      d.ourOffer    || null,
+      notes:          d.notes       || null,
+      status:         d.status,
+      call:           d.call,
+    }).eq('id', d.id).then(function(res) {
+      if (res.error) console.error('Settlement save error:', res.error.message);
+    });
+  }
+
   function render() {
-    let list = debts;
-    if (currentFilter==='negotiating') list = debts.filter(d=>['negotiating','offer-made','agreed'].includes(d.status));
-    if (currentFilter==='call')        list = debts.filter(d=>d.call);
-    if (currentFilter==='settled')     list = debts.filter(d=>d.status==='settled');
-    document.getElementById('debt-list').innerHTML = list.map(d => {
-      const i = debts.indexOf(d);
-      const isOpen = expanded === i;
-      const st = statusOptions[d.status] || statusOptions['not-contacted'];
-      const offerAmt = d.ourOffer ? parseFloat(d.ourOffer) : null;
-      const savePct  = offerAmt ? Math.round((1-offerAmt/d.balance)*100) : null;
-      return `<div class="debt-card">
-        <div class="debt-header" onclick="toggleExpand(${i})">
-          <div><div class="debt-name">${d.name}</div><div class="debt-agency">${d.agency}</div></div>
-          <div style="font-weight:600;">${fmt(d.balance)}</div>
-          <div><div style="font-weight:500;color:var(--green);">${offerAmt?fmt(offerAmt):'—'}</div>${savePct?`<div class="savings-note">Saves ${savePct}%</div>`:''}</div>
-          <div style="color:var(--text2);">${d.theirCounter?fmt(parseFloat(d.theirCounter)):'—'}</div>
-          <div><span class="badge ${st.cls}">${st.label}</span></div>
-          <div style="color:var(--text3);text-align:right;">${isOpen?'▲':'▼'}</div>
-        </div>
-        <div class="debt-detail ${isOpen?'open':''}">
-          <div class="form-row" style="margin-bottom:14px;">
-            <div class="form-group"><label>Our offer ($)</label><input type="number" class="inline-field" placeholder="e.g. 86" value="${d.ourOffer}" oninput="debts[${i}].ourOffer=this.value;renderStats();">${savePct?`<div class="savings-note" style="margin-top:4px;">Save ${savePct}% = ${fmt(d.balance-(offerAmt||0))}</div>`:''}</div>
-            <div class="form-group"><label>Their counter ($)</label><input type="number" class="inline-field" placeholder="What they said" value="${d.theirCounter}" oninput="debts[${i}].theirCounter=this.value;"></div>
-          </div>
-          <div class="form-row" style="margin-bottom:16px;">
-            <div class="form-group"><label>Status</label><select class="inline-field" onchange="debts[${i}].status=this.value;render();renderStats();">${Object.entries(statusOptions).map(([k,v])=>`<option value="${k}" ${d.status===k?'selected':''}>${v.label}</option>`).join('')}</select></div>
-            <div class="form-group"><label>Notes</label><input type="text" class="inline-field" placeholder="e.g. Ask for supervisor" value="${d.notes}" oninput="debts[${i}].notes=this.value;"></div>
-          </div>
-          <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Contact log</div>
-          ${d.log.length===0?'<p style="font-size:13px;color:var(--text3);margin-bottom:10px;">No contact logged yet.</p>':d.log.map(l=>`<div class="log-entry"><div class="log-meta"><span class="badge badge-green">${l.type}</span><span style="font-size:12px;color:var(--text3);">${l.date}</span></div><div style="font-size:13px;color:var(--text);line-height:1.6;">${l.text}</div></div>`).join('')}
-          <div class="add-log">
-            <select id="log-type-${i}" class="inline-field" style="width:150px;"><option>Called</option><option>They called</option><option>Emailed</option><option>Letter sent</option><option>Agreement reached</option></select>
-            <textarea id="log-note-${i}" placeholder="What happened?"></textarea>
-            <button class="btn btn-primary btn-sm" onclick="addLog(${i})">Log it</button>
-          </div>
-          <div style="display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
-            <button class="btn btn-outline btn-sm" onclick="debts[${i}].status='settled';render();renderStats();">Mark settled ✓</button>
-            <button class="btn btn-outline btn-sm" onclick="debts[${i}].call=!debts[${i}].call;render();">${d.call?'Remove call flag':'📞 Flag to call'}</button>
-          </div>
-        </div>
-      </div>`;
+    var list = debts;
+    if (currentFilter==='negotiating') list = debts.filter(function(d){ return ['negotiating','offer-made','agreed'].includes(d.status); });
+    if (currentFilter==='call')        list = debts.filter(function(d){ return d.call; });
+    if (currentFilter==='settled')     list = debts.filter(function(d){ return d.status==='settled'; });
+
+    document.getElementById('debt-list').innerHTML = list.map(function(d) {
+      var i        = debts.indexOf(d);
+      var isOpen   = expanded === i;
+      var st       = statusOptions[d.status] || statusOptions['not-contacted'];
+      var offerAmt = d.ourOffer ? parseFloat(d.ourOffer) : null;
+      var savePct  = offerAmt ? Math.round((1-offerAmt/d.balance)*100) : null;
+      return '<div class="debt-card">' +
+        '<div class="debt-header" onclick="toggleExpand(' + i + ')">' +
+          '<div><div class="debt-name">' + d.name + '</div><div class="debt-agency">' + d.agency + '</div></div>' +
+          '<div style="font-weight:600;">' + fmt(d.balance) + '</div>' +
+          '<div><div style="font-weight:500;color:var(--green);">' + (offerAmt?fmt(offerAmt):'—') + '</div>' + (savePct?'<div class="savings-note">Saves ' + savePct + '%</div>':'') + '</div>' +
+          '<div style="color:var(--text2);">' + (d.theirCounter?fmt(parseFloat(d.theirCounter)):'—') + '</div>' +
+          '<div><span class="badge ' + st.cls + '">' + st.label + '</span></div>' +
+          '<div style="color:var(--text3);text-align:right;">' + (isOpen?'▲':'▼') + '</div>' +
+        '</div>' +
+        '<div class="debt-detail ' + (isOpen?'open':'') + '">' +
+          '<div class="form-row" style="margin-bottom:14px;">' +
+            '<div class="form-group"><label>Our offer ($)</label><input type="number" class="inline-field" placeholder="e.g. 86" value="' + (d.ourOffer||'') + '" oninput="debts[' + i + '].ourOffer=this.value;renderStats();">' + (savePct?'<div class="savings-note" style="margin-top:4px;">Save ' + savePct + '% = ' + fmt(d.balance-(offerAmt||0)) + '</div>':'') + '</div>' +
+            '<div class="form-group"><label>Their counter ($)</label><input type="number" class="inline-field" placeholder="What they said" value="' + (d.theirCounter||'') + '" oninput="debts[' + i + '].theirCounter=this.value;"></div>' +
+          '</div>' +
+          '<div class="form-row" style="margin-bottom:16px;">' +
+            '<div class="form-group"><label>Status</label><select class="inline-field" onchange="debts[' + i + '].status=this.value;saveDebt(' + i + ');render();renderStats();">' +
+              Object.entries(statusOptions).map(function(e){ return '<option value="' + e[0] + '"' + (d.status===e[0]?' selected':'') + '>' + e[1].label + '</option>'; }).join('') +
+            '</select></div>' +
+            '<div class="form-group"><label>Notes</label><input type="text" class="inline-field" placeholder="e.g. Ask for supervisor" value="' + (d.notes||'') + '" oninput="debts[' + i + '].notes=this.value;saveDebt(' + i + ');"></div>' +
+          '</div>' +
+          '<div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Contact log</div>' +
+          (d.log.length===0?'<p style="font-size:13px;color:var(--text3);margin-bottom:10px;">No contact logged yet.</p>':d.log.map(function(l){ return '<div class="log-entry"><div class="log-meta"><span class="badge badge-green">' + l.type + '</span><span style="font-size:12px;color:var(--text3);">' + l.date + '</span></div><div style="font-size:13px;color:var(--text);line-height:1.6;">' + l.text + '</div></div>'; }).join('')) +
+          '<div class="add-log">' +
+            '<select id="log-type-' + i + '" class="inline-field" style="width:150px;"><option>Called</option><option>They called</option><option>Emailed</option><option>Letter sent</option><option>Agreement reached</option></select>' +
+            '<textarea id="log-note-' + i + '" placeholder="What happened?"></textarea>' +
+            '<button class="btn btn-primary btn-sm" onclick="addLog(' + i + ')">Log it</button>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">' +
+            '<button class="btn btn-outline btn-sm" onclick="debts[' + i + '].status=\'settled\';saveDebt(' + i + ');render();renderStats();">Mark settled ✓</button>' +
+            '<button class="btn btn-outline btn-sm" onclick="debts[' + i + '].call=!debts[' + i + '].call;saveDebt(' + i + ');render();">' + (d.call?'Remove call flag':'📞 Flag to call') + '</button>' +
+            '<button class="btn btn-outline btn-sm" onclick="saveOffer(' + i + ')">💾 Save offer</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
     }).join('');
   }
+
+  function saveOffer(i) {
+    saveDebt(i);
+    var btn = event.target;
+    btn.textContent = '✓ Saved';
+    setTimeout(function(){ btn.textContent = '💾 Save offer'; }, 1500);
+  }
+
   function toggleExpand(i) { expanded = expanded===i?null:i; render(); }
+
   function addLog(i) {
-    const type = document.getElementById(`log-type-${i}`).value;
-    const text = document.getElementById(`log-note-${i}`).value.trim();
+    var type  = document.getElementById('log-type-' + i).value;
+    var text  = document.getElementById('log-note-' + i).value.trim();
     if (!text) return;
-    const today = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
-    debts[i].log.unshift({date:today,type,text});
+    var today = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    debts[i].log.unshift({date:today,type:type,text:text});
+    // Save log to debt notes field as appended text
+    debts[i].notes = (debts[i].notes||'') + '\n[' + today + ' ' + type + '] ' + text;
+    saveDebt(i);
     render();
   }
+
   var db2 = (window.supabase || window.supabasejs).createClient(SUPABASE_URL, SUPABASE_KEY);
   document.addEventListener('DOMContentLoaded', function() {
     db2.auth.getSession().then(function(res) {
       if (!res.data || !res.data.session) return;
       var uid = res.data.session.user.id;
-      db2.from('debts').select('*').eq('user_id', uid).eq('settled', false).order('balance',{ascending:true}).then(function(r) {
-        debts = (r.data||[]).map(function(d){ return { id:d.id, name:d.name, agency:d.agency||'Unknown', balance:parseFloat(d.balance), ourOffer:d.our_offer||'', theirCounter:'', status:'not-contacted', call:d.call||false, log:[], notes:d.notes||'' }; });
+      db2.from('debts').select('*').eq('user_id', uid).order('balance',{ascending:true}).then(function(r) {
+        debts = (r.data||[]).map(function(d){
+          return { id:d.id, name:d.name, agency:d.agency||'Unknown', balance:parseFloat(d.balance), ourOffer:d.our_offer||'', theirCounter:'', status:d.status||'not-contacted', call:d.call||false, log:[], notes:d.notes||'' };
+        });
         renderStats(); render();
       });
     });

@@ -215,32 +215,30 @@
     var freq   = document.getElementById('edit-freq').value;
     var cat    = document.getElementById('edit-cat').value;
     if (!name || !amount) { alert('Name and amount are required.'); return; }
-    var bill   = bills[i];
+    var bill = bills[i];
     db.from('bills').update({ name:name, amount:amount, due_day:day, auto_pay:auto, frequency:freq, category:cat }).eq('id', bill.id)
       .then(function(res) {
         if (res.error) { alert('Error saving: ' + res.error.message); return; }
-        bills[i] = { id:bill.id, name:name, amount:amount, day:day, auto:auto, freq:freq, category:cat, paid:bill.paid };
         editingIndex = null;
-        renderSummary();
-        renderTable();
+        setTimeout(function() { loadBills(); }, 300);
       });
   }
 
   function togglePaid(i) {
-    var bill = bills[i];
-    db.from('bills').update({ paid: !bill.paid }).eq('id', bill.id).then(function() {
-      bills[i].paid = !bill.paid;
-      renderTable();
+    var bill   = bills[i];
+    var newVal = !bill.paid;
+    db.from('bills').update({ paid: newVal }).eq('id', bill.id).then(function(res) {
+      if (res.error) { alert('Error updating: ' + res.error.message); return; }
+      setTimeout(function() { loadBills(); }, 300);
     });
   }
 
   function removeBill(i) {
     var bill = bills[i];
     if (!confirm('Remove ' + bill.name + '?')) return;
-    db.from('bills').delete().eq('id', bill.id).then(function() {
-      bills.splice(i, 1);
-      renderSummary();
-      renderTable();
+    db.from('bills').delete().eq('id', bill.id).then(function(res) {
+      if (res.error) { alert('Error removing: ' + res.error.message); return; }
+      setTimeout(function() { loadBills(); }, 300);
     });
   }
 
@@ -252,13 +250,13 @@
     var freq   = document.getElementById('bill-freq').value;
     var cat    = document.getElementById('bill-cat').value;
     if (!name || !amount) { alert('Please enter a name and amount.'); return; }
-    db.from('bills').insert({ user_id:currentUser.id, name:name, amount:amount, due_day:due, auto_pay:auto, frequency:freq, category:cat, paid:false })
+    db.from('bills').insert({ user_id:currentUser.id, name:name, amount:amount, due_day:due, auto_pay:auto, frequency:freq, category:cat, paid:false }).select()
       .then(function(res) {
         if (res.error) { alert('Error adding bill: ' + res.error.message); return; }
         document.getElementById('bill-name').value   = '';
         document.getElementById('bill-amount').value = '';
         document.getElementById('bill-due').value    = '';
-        loadBills();
+        setTimeout(function() { loadBills(); }, 300);
       });
   }
 </script>

@@ -256,8 +256,8 @@
     if (!name) return;
     db.from('assets').update({ name:name, amount:amount, sub:sub, category:cat }).eq('id', assets[i].id).then(function(res) {
       if (res.error) { alert('Error: ' + res.error.message); return; }
-      assets[i] = { id:assets[i].id, name:name, amount:amount, cat:cat, sub:sub };
-      editAsset = null; render();
+      editAsset = null;
+      setTimeout(function() { loadAll(); }, 300);
     });
   }
 
@@ -268,8 +268,8 @@
     if (!name) return;
     db.from('liabilities').update({ name:name, amount:amount, sub:sub }).eq('id', liabilities[i].id).then(function(res) {
       if (res.error) { alert('Error: ' + res.error.message); return; }
-      liabilities[i] = { id:liabilities[i].id, name:name, amount:amount, sub:sub };
-      editLiability = null; render();
+      editLiability = null;
+      setTimeout(function() { loadAll(); }, 300);
     });
   }
 
@@ -299,11 +299,11 @@
   }
 
   function removeAsset(i) {
-    db.from('assets').delete().eq('id', assets[i].id).then(function() { assets.splice(i,1); render(); });
+    db.from('assets').delete().eq('id', assets[i].id).then(function(res) { if (res.error) { alert('Error: ' + res.error.message); return; } setTimeout(function() { loadAll(); }, 300); });
   }
 
   function removeLiability(i) {
-    db.from('liabilities').delete().eq('id', liabilities[i].id).then(function() { liabilities.splice(i,1); render(); });
+    db.from('liabilities').delete().eq('id', liabilities[i].id).then(function(res) { if (res.error) { alert('Error: ' + res.error.message); return; } setTimeout(function() { loadAll(); }, 300); });
   }
 </script>
 </body>
