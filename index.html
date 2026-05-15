@@ -111,178 +111,136 @@
   </div>
 </div>
 
-<script type="module">
-  // Wait for auth guard to set session
-  await new Promise(r => setTimeout(r, 300));
-  const db   = window.__supabaseClient;
-  const session = window.__supabaseSession;
-  if (!db || !session) { window.location.replace('login.html'); }
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var db = (window.supabase || window.supabasejs).createClient(SUPABASE_URL, SUPABASE_KEY);
+    var currentDate = new Date();
+    var currentUser = null;
 
-  const user = session.user;
-  const name = user.user_metadata?.full_name || user.email.split('@')[0];
-
-  // Greeting
-  const hour = new Date().getHours();
-  const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-  document.getElementById('greeting').textContent = `${greet}, ${name} ☁️`;
-
-  // Month display
-  let currentDate = new Date();
-  window.changeMonth = (dir) => {
-    currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + dir, 1);
-    loadData();
-  };
-
-  function updateMonthLabel() {
-    document.getElementById('month-label').textContent = currentDate.toLocaleDateString('en-US', { month:'long', year:'numeric' });
-  }
-
-  async function loadData() {
-    updateMonthLabel();
-    const uid = window.VIEWING_USER_ID || user.id;
-    const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString().slice(0,10);
-    const monthEnd   = new Date(currentDate.getFullYear(), currentDate.getMonth()+1, 0).toISOString().slice(0,10);
-
-    // Load expenses
-    const { data: expenses } = await db.from('expenses')
-      .select('*').eq('user_id', uid)
-      .gte('date', monthStart).lte('date', monthEnd);
-
-    // Load bills
-    const { data: bills } = await db.from('bills').select('*').eq('user_id', uid);
-
-    // Load debts
-    const { data: debts } = await db.from('debts').select('*').eq('user_id', uid).eq('settled', false);
-
-    // Load budget for this month
-    const { data: budgets } = await db.from('budgets').select('*').eq('user_id', uid)
-      .eq('period', `${currentDate.getFullYear()}-${String(currentDate.getMonth()+1).padStart(2,'0')}`);
-
-    renderBudgetCards(expenses||[], budgets?.[0]||null);
-    renderSpendingCats(expenses||[]);
-    renderUpcomingBills(bills||[]);
-    renderDebtSnapshot(debts||[]);
-    renderRecentExpenses(expenses||[]);
-  }
-
-  function fmt(n) { return '$' + Math.round(n).toLocaleString(); }
-
-  function renderBudgetCards(expenses, budget) {
-    const spent     = expenses.reduce((s,e)=>s+parseFloat(e.amount),0);
-    const limit     = budget?.total_limit || 0;
-    const remaining = limit - spent;
-    const pct       = limit > 0 ? Math.min(100, Math.round((spent/limit)*100)) : 0;
-
-    document.getElementById('card-budget').textContent    = limit > 0 ? fmt(limit) : 'Not set';
-    document.getElementById('card-budget-sub').textContent = limit > 0 ? `Set for ${currentDate.toLocaleDateString('en-US',{month:'long',year:'numeric'})}` : 'Go to Settings to set a budget';
-    document.getElementById('card-spent').textContent     = fmt(spent);
-    document.getElementById('card-spent-sub').textContent = `${pct}% of budget used`;
-    document.getElementById('spend-bar').style.width      = pct + '%';
-    document.getElementById('card-remaining').textContent = fmt(remaining);
-    document.getElementById('card-remaining-sub').textContent = `${new Date(currentDate.getFullYear(), currentDate.getMonth()+1,0).getDate() - new Date().getDate()} days left this month`;
-
-    const tipEl = document.getElementById('tip-text');
-    if (spent === 0) {
-      tipEl.innerHTML = `<strong>Welcome, ${name}!</strong> Start by adding your expenses and bills to see your budget come to life.`;
-    } else if (pct > 80) {
-      tipEl.innerHTML = `<strong>Heads up!</strong> You've used ${pct}% of your budget with ${new Date().getDate()} days into the month. Watch your spending closely.`;
-    } else {
-      tipEl.innerHTML = `<strong>You're on track.</strong> You've spent ${fmt(spent)} so far this month with ${fmt(Math.max(0,remaining))} remaining.`;
-    }
-  }
-
-  function renderSpendingCats(expenses) {
-    if (!expenses.length) return;
-    const cats = {};
-    expenses.forEach(e => { cats[e.category||'Other'] = (cats[e.category||'Other']||0) + parseFloat(e.amount); });
-    const max = Math.max(...Object.values(cats));
-    const colors = { Housing:'red', Food:'green', Transport:'amber', Subscriptions:'amber', Entertainment:'gray', Health:'green', Giving:'green', Other:'gray' };
-    document.getElementById('spending-cats').innerHTML = `<div style="display:flex;flex-direction:column;gap:14px;">` +
-      Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([cat,amt]) => `
-        <div>
-          <div class="cat-meta"><span style="font-weight:500;">${cat}</span><span style="color:var(--text2);">${fmt(amt)}</span></div>
-          <div class="progress-track"><div class="progress-fill ${colors[cat]||''}" style="width:${Math.round((amt/max)*100)}%"></div></div>
-        </div>`).join('') + `</div>`;
-  }
-
-  function renderUpcomingBills(bills) {
-    const today = new Date().getDate();
-    const upcoming = bills.filter(b => b.due_day && !b.paid).sort((a,b) => {
-      const da = a.due_day >= today ? a.due_day : a.due_day + 31;
-      const db = b.due_day >= today ? b.due_day : b.due_day + 31;
-      return da - db;
-    }).slice(0,4);
-    if (!upcoming.length) return;
-    document.getElementById('upcoming-bills').innerHTML = `<div style="display:flex;flex-direction:column;gap:12px;">` +
-      upcoming.map(b => {
-        const daysUntil = b.due_day - today;
-        const badge = daysUntil <= 3 ? 'badge-red' : daysUntil <= 7 ? 'badge-amber' : 'badge-gray';
-        const label = daysUntil <= 0 ? 'Due today' : daysUntil === 1 ? '1 day' : `${daysUntil} days`;
-        return `<div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--bg2);">
-          <div><div style="font-weight:500;font-size:13px;">${b.name}</div><div style="font-size:12px;color:var(--text3);">Due ${b.due_day}${b.due_day===1?'st':b.due_day===2?'nd':b.due_day===3?'rd':'th'}</div></div>
-          <div style="display:flex;align-items:center;gap:8px;"><span style="font-weight:600;">$${parseFloat(b.amount).toLocaleString()}</span><span class="badge ${badge}">${label}</span></div>
-        </div>`;
-      }).join('') + `</div>`;
-  }
-
-  function renderDebtSnapshot(debts) {
-    const total   = debts.reduce((s,d)=>s+parseFloat(d.balance),0);
-    const carLoan = debts.find(d=>d.name.toLowerCase().includes('car'));
-    const excl    = total - (carLoan ? parseFloat(carLoan.balance) : 0);
-    const sorted  = [...debts].sort((a,b)=>parseFloat(a.balance)-parseFloat(b.balance));
-    const target  = sorted[0];
-
-    document.getElementById('total-debt').textContent = fmt(total);
-    document.getElementById('debt-sub').textContent   = `${debts.length} account${debts.length!==1?'s':''}`;
-    document.getElementById('excl-debt').textContent  = fmt(excl);
-
-    if (target) {
-      document.getElementById('snowball-amt').textContent  = fmt(parseFloat(target.balance));
-      document.getElementById('snowball-name').textContent = target.name + ' — pay this first';
-    }
-
-    if (!debts.length) return;
-
-    // Group for chart
-    const groups = [
-      { label:'Car Loan',       amount: carLoan ? parseFloat(carLoan.balance) : 0, color:'#c0442a' },
-      { label:'Other debts',    amount: excl,                                       color:'#c97b2e' },
-    ].filter(g=>g.amount>0);
-
-    new Chart(document.getElementById('debtChart').getContext('2d'), {
-      type:'doughnut',
-      data:{ labels:groups.map(g=>g.label), datasets:[{ data:groups.map(g=>g.amount), backgroundColor:groups.map(g=>g.color), borderWidth:3, borderColor:'#fff', hoverOffset:6 }] },
-      options:{ cutout:'68%', plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>` $${c.raw.toLocaleString()}`}} } }
+    // Check session first
+    db.auth.getSession().then(function(res) {
+      if (!res.data || !res.data.session) {
+        window.location.replace('login.html');
+        return;
+      }
+      currentUser = res.data.session.user;
+      var name  = (currentUser.user_metadata && currentUser.user_metadata.full_name) || currentUser.email.split('@')[0];
+      var hour  = new Date().getHours();
+      var greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+      document.getElementById('greeting').textContent     = greet + ', ' + name + ' \u2601\ufe0f';
+      document.getElementById('main-content').style.display = 'block';
+      updateMonthLabel();
+      loadData();
     });
 
-    document.getElementById('debt-legend').innerHTML = groups.map(g=>
-      `<div class="debt-leg-item"><div class="debt-leg-left"><div class="debt-leg-dot" style="background:${g.color};"></div><span style="color:var(--text2);">${g.label}</span></div><span style="font-weight:600;">${fmt(g.amount)}</span></div>`
-    ).join('');
-  }
+    window.changeMonth = function(dir) {
+      currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + dir, 1);
+      updateMonthLabel();
+      loadData();
+    };
 
-  function renderRecentExpenses(expenses) {
-    if (!expenses.length) return;
-    const recent = [...expenses].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,5);
-    const catBadge = { Housing:'badge-red', Food:'badge-green', Transport:'badge-amber', Subscriptions:'badge-gray', Other:'badge-gray' };
-    document.getElementById('recent-expenses').innerHTML = `
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Name</th><th>Category</th><th>Date</th><th style="text-align:right;">Amount</th></tr></thead>
-          <tbody>${recent.map(e=>`
-            <tr>
-              <td style="font-weight:500;">${e.name}</td>
-              <td><span class="badge ${catBadge[e.category]||'badge-gray'}">${e.category||'Other'}</span></td>
-              <td style="color:var(--text3);">${new Date(e.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</td>
-              <td style="text-align:right;font-weight:600;">$${parseFloat(e.amount).toFixed(2)}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>`;
-  }
+    function updateMonthLabel() {
+      document.getElementById('month-label').textContent = currentDate.toLocaleDateString('en-US', { month:'long', year:'numeric' });
+    }
 
-  // Show page and load
-  document.getElementById('main-content').style.display = 'block';
-  loadData();
+    function fmt(n) { return '$' + Math.round(n).toLocaleString(); }
+
+    function loadData() {
+      if (!currentUser) return;
+      var uid        = currentUser.id;
+      var monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString().slice(0,10);
+      var monthEnd   = new Date(currentDate.getFullYear(), currentDate.getMonth()+1, 0).toISOString().slice(0,10);
+
+      // Load expenses
+      db.from('expenses').select('*').eq('user_id', uid).gte('date', monthStart).lte('date', monthEnd)
+        .then(function(res) { renderSpendingCats(res.data || []); renderRecentExpenses(res.data || []); renderBudgetCards(res.data || []); });
+
+      // Load bills
+      db.from('bills').select('*').eq('user_id', uid)
+        .then(function(res) { renderUpcomingBills(res.data || []); });
+
+      // Load debts
+      db.from('debts').select('*').eq('user_id', uid).eq('settled', false)
+        .then(function(res) { renderDebtSnapshot(res.data || []); });
+    }
+
+    function renderBudgetCards(expenses) {
+      var spent = expenses.reduce(function(s,e){ return s + parseFloat(e.amount); }, 0);
+      document.getElementById('card-spent').textContent     = fmt(spent);
+      document.getElementById('card-budget').textContent    = 'Not set';
+      document.getElementById('card-remaining').textContent = fmt(0 - spent);
+    }
+
+    function renderSpendingCats(expenses) {
+      if (!expenses.length) return;
+      var cats = {};
+      expenses.forEach(function(e) { cats[e.category||'Other'] = (cats[e.category||'Other']||0) + parseFloat(e.amount); });
+      var max    = Math.max.apply(null, Object.values(cats));
+      var colors = { Housing:'red', Food:'green', Transport:'amber', Subscriptions:'amber', Entertainment:'gray', Health:'green', Giving:'green', Other:'gray' };
+      document.getElementById('spending-cats').innerHTML = '<div style="display:flex;flex-direction:column;gap:14px;">' +
+        Object.entries(cats).sort(function(a,b){ return b[1]-a[1]; }).map(function(entry) {
+          return '<div><div class="cat-meta"><span style="font-weight:500;">' + entry[0] + '</span><span style="color:var(--text2);">' + fmt(entry[1]) + '</span></div>' +
+            '<div class="progress-track"><div class="progress-fill ' + (colors[entry[0]]||'') + '" style="width:' + Math.round((entry[1]/max)*100) + '%"></div></div></div>';
+        }).join('') + '</div>';
+    }
+
+    function renderUpcomingBills(bills) {
+      var today    = new Date().getDate();
+      var upcoming = bills.filter(function(b){ return b.due_day && !b.paid; }).sort(function(a,b){
+        var da = a.due_day >= today ? a.due_day : a.due_day + 31;
+        var db = b.due_day >= today ? b.due_day : b.due_day + 31;
+        return da - db;
+      }).slice(0,4);
+      if (!upcoming.length) return;
+      document.getElementById('upcoming-bills').innerHTML = '<div style="display:flex;flex-direction:column;gap:12px;">' +
+        upcoming.map(function(b) {
+          var daysUntil = b.due_day - today;
+          var badge     = daysUntil <= 3 ? 'badge-red' : daysUntil <= 7 ? 'badge-amber' : 'badge-gray';
+          var label     = daysUntil <= 0 ? 'Due today' : daysUntil === 1 ? '1 day' : daysUntil + ' days';
+          var suffix    = b.due_day===1?'st':b.due_day===2?'nd':b.due_day===3?'rd':'th';
+          return '<div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--bg2);"><div><div style="font-weight:500;font-size:13px;">' + b.name + '</div><div style="font-size:12px;color:var(--text3);">Due ' + b.due_day + suffix + '</div></div><div style="display:flex;align-items:center;gap:8px;"><span style="font-weight:600;">$' + parseFloat(b.amount).toLocaleString() + '</span><span class="badge ' + badge + '">' + label + '</span></div></div>';
+        }).join('') + '</div>';
+    }
+
+    function renderDebtSnapshot(debts) {
+      var total   = debts.reduce(function(s,d){ return s+parseFloat(d.balance); }, 0);
+      var carLoan = debts.find(function(d){ return d.name.toLowerCase().includes('car'); });
+      var excl    = total - (carLoan ? parseFloat(carLoan.balance) : 0);
+      var sorted  = debts.slice().sort(function(a,b){ return parseFloat(a.balance)-parseFloat(b.balance); });
+      var target  = sorted[0];
+      document.getElementById('total-debt').textContent = fmt(total);
+      document.getElementById('debt-sub').textContent   = debts.length + ' account' + (debts.length!==1?'s':'');
+      document.getElementById('excl-debt').textContent  = fmt(excl);
+      if (target) {
+        document.getElementById('snowball-amt').textContent  = fmt(parseFloat(target.balance));
+        document.getElementById('snowball-name').textContent = target.name + ' — pay this first';
+      }
+      if (!debts.length) return;
+      var groups = [
+        { label:'Car Loan',    amount: carLoan ? parseFloat(carLoan.balance) : 0, color:'#c0442a' },
+        { label:'Other debts', amount: excl,                                       color:'#c97b2e' },
+      ].filter(function(g){ return g.amount > 0; });
+      new Chart(document.getElementById('debtChart').getContext('2d'), {
+        type:'doughnut',
+        data:{ labels:groups.map(function(g){ return g.label; }), datasets:[{ data:groups.map(function(g){ return g.amount; }), backgroundColor:groups.map(function(g){ return g.color; }), borderWidth:3, borderColor:'#fff', hoverOffset:6 }] },
+        options:{ cutout:'68%', plugins:{ legend:{display:false} } }
+      });
+      document.getElementById('debt-legend').innerHTML = groups.map(function(g){
+        return '<div class="debt-leg-item"><div class="debt-leg-left"><div class="debt-leg-dot" style="background:' + g.color + ';"></div><span style="color:var(--text2);">' + g.label + '</span></div><span style="font-weight:600;">' + fmt(g.amount) + '</span></div>';
+      }).join('');
+    }
+
+    function renderRecentExpenses(expenses) {
+      if (!expenses.length) return;
+      var recent   = expenses.slice().sort(function(a,b){ return new Date(b.date)-new Date(a.date); }).slice(0,5);
+      var catBadge = { Housing:'badge-red', Food:'badge-green', Transport:'badge-amber', Subscriptions:'badge-gray', Other:'badge-gray' };
+      document.getElementById('recent-expenses').innerHTML =
+        '<div class="table-wrap"><table><thead><tr><th>Name</th><th>Category</th><th>Date</th><th style="text-align:right;">Amount</th></tr></thead><tbody>' +
+        recent.map(function(e){
+          return '<tr><td style="font-weight:500;">' + e.name + '</td><td><span class="badge ' + (catBadge[e.category]||'badge-gray') + '">' + (e.category||'Other') + '</span></td><td style="color:var(--text3);">' + new Date(e.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) + '</td><td style="text-align:right;font-weight:600;">$' + parseFloat(e.amount).toFixed(2) + '</td></tr>';
+        }).join('') + '</tbody></table></div>';
+    }
+  });
 </script>
 
 </body>
