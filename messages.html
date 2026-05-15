@@ -149,16 +149,7 @@
         });
 
         // Add sample thread for demo if no real partners yet
-        if (!threads.length) {
-          threads = [
-            { id:'demo-victor', name:'Victor (demo)', initials:'VR', otherId:'demo', messages:[
-              { from:'them', text:'Hey — saw you skipped the smart watch. Good call!', ref:{ type:'Purchase', label:'Smart watch — Skipped' }, time:'May 14, 9:02am' },
-              { from:'me',   text:'Thanks! Trying to stay focused on the debt paydown.', ref:null, time:'May 14, 9:15am' },
-              { from:'them', text:'How close are you to paying off the Fingerhut one?', ref:null, time:'May 14, 9:18am' },
-              { from:'me',   text:'Should have it cleared by the 21st paycheck!', ref:{ type:'Debt', label:'WEBBANK/FINGERHUT — $144' }, time:'May 14, 9:21am' },
-            ]},
-          ];
-        }
+
 
         renderThreadList();
       });

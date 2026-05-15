@@ -107,24 +107,7 @@
     { key:'savings',   label:'Savings goal',      bg:'var(--green-l)', color:'var(--green)' },
   ];
 
-  const journalData = {
-    '2026-5': {
-      note: 'Tough month with the car payment but held the budget together. Made first contact with Midland Credit about the Credit One account.',
-      tags: ['debt'],
-      entries: [
-        { date:'May 14', text:'Called Midland Credit Management about Credit One Bank ($698). They offered $400. Countered with $150 — they said they\'d follow up.', tags:['debt'] },
-        { date:'May 8',  text:'Car payment split across both paychecks successfully. Balance looks okay.', tags:[] },
-        { date:'May 1',  text:'Started the month with $450. Bills hit on the 1st — holding steady.', tags:[] },
-      ]
-    },
-    '2026-4': {
-      note: 'April was tight — unexpected grocery spike. Otherwise stable.',
-      tags: ['short'],
-      entries: [
-        { date:'Apr 28', text:'Called Credit One — no answer. Left voicemail.', tags:['debt'] },
-      ]
-    }
-  };
+  var journalData = {};
 
   function key() { return `${currentYear}-${currentMonth+1}`; }
   function getData() { if (!journalData[key()]) journalData[key()] = {note:'',tags:[],entries:[]}; return journalData[key()]; }

@@ -55,13 +55,16 @@ nav {
 
 .nav-brand {
   font-family: 'DM Serif Display', serif;
-  font-size: 20px;
+  font-size: 18px;
   color: var(--text);
   text-decoration: none;
-  padding: 16px 24px 16px 0;
+  padding: 10px 24px 10px 0;
   margin-right: 16px;
   border-right: 1px solid var(--border);
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   letter-spacing: -0.3px;
 }
 

@@ -52,110 +52,84 @@
   <div class="section-header">
     <h2>Your goals</h2>
   </div>
-  <div id="goals-list" style="display:flex; flex-direction:column; gap:16px;">
-
-    <div class="card goal-card">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
-        <div>
-          <div style="font-weight:600; font-size:16px; margin-bottom:2px;">Emergency Fund</div>
-          <div style="font-size:13px; color:var(--text2);">Target: Dec 2026</div>
-        </div>
-        <div style="text-align:right;">
-          <div style="font-family:'DM Serif Display',serif; font-size:22px; color:var(--green);">$1,200</div>
-          <div style="font-size:13px; color:var(--text2);">of $3,000</div>
-        </div>
-      </div>
-      <div class="progress-track" style="margin-bottom:8px;">
-        <div class="progress-fill" style="width:40%"></div>
-      </div>
-      <div style="display:flex; justify-content:space-between; font-size:13px; color:var(--text2);">
-        <span>40% there</span>
-        <span>$1,800 to go</span>
-      </div>
-      <div style="margin-top:14px; display:flex; gap:8px; align-items:center;">
-        <input type="number" placeholder="Add amount ($)" style="padding:8px 12px; font-size:13px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); width:160px; font-family:'DM Sans',sans-serif;">
-        <button class="btn btn-outline btn-sm">Add to goal</button>
-        <button class="btn btn-danger btn-sm" style="margin-left:auto;" onclick="deleteGoal(this)">Remove</button>
-      </div>
-    </div>
-
-    <div class="card goal-card">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
-        <div>
-          <div style="font-weight:600; font-size:16px; margin-bottom:2px;">Vacation — Italy</div>
-          <div style="font-size:13px; color:var(--text2);">Target: Aug 2026</div>
-        </div>
-        <div style="text-align:right;">
-          <div style="font-family:'DM Serif Display',serif; font-size:22px; color:var(--amber);">$800</div>
-          <div style="font-size:13px; color:var(--text2);">of $2,500</div>
-        </div>
-      </div>
-      <div class="progress-track" style="margin-bottom:8px;">
-        <div class="progress-fill amber" style="width:32%"></div>
-      </div>
-      <div style="display:flex; justify-content:space-between; font-size:13px; color:var(--text2);">
-        <span>32% there</span>
-        <span>$1,700 to go</span>
-      </div>
-      <div style="margin-top:14px; display:flex; gap:8px; align-items:center;">
-        <input type="number" placeholder="Add amount ($)" style="padding:8px 12px; font-size:13px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); width:160px; font-family:'DM Sans',sans-serif;">
-        <button class="btn btn-outline btn-sm">Add to goal</button>
-        <button class="btn btn-danger btn-sm" style="margin-left:auto;" onclick="deleteGoal(this)">Remove</button>
-      </div>
-    </div>
-
-  </div>
-</div>
+  <div id="goals-list" style="display:flex; flex-direction:column; gap:16px;"></div>
 
 <script>
-  function addGoal() {
-    const name   = document.getElementById('goal-name').value.trim();
-    const target = parseFloat(document.getElementById('goal-target').value) || 0;
-    const saved  = parseFloat(document.getElementById('goal-saved').value) || 0;
-    const date   = document.getElementById('goal-date').value;
+  var db = (window.supabase || window.supabasejs).createClient(SUPABASE_URL, SUPABASE_KEY);
+  var currentUser = null;
 
-    if (!name || !target) { alert('Please enter a name and target amount.'); return; }
+  document.addEventListener('DOMContentLoaded', function() {
+    db.auth.getSession().then(function(res) {
+      if (!res.data || !res.data.session) { window.location.replace('login.html'); return; }
+      currentUser = res.data.session.user;
+      loadGoals();
+    });
+  });
 
-    const pct = Math.min(100, Math.round((saved / target) * 100));
-    const remaining = Math.max(0, target - saved);
-    const color = pct >= 75 ? '' : pct >= 40 ? 'amber' : 'red';
-    const dateStr = date ? new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month:'short', year:'numeric' }) : 'No target date';
-
-    const card = document.createElement('div');
-    card.className = 'card goal-card';
-    card.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
-        <div>
-          <div style="font-weight:600; font-size:16px; margin-bottom:2px;">${name}</div>
-          <div style="font-size:13px; color:var(--text2);">Target: ${dateStr}</div>
-        </div>
-        <div style="text-align:right;">
-          <div style="font-family:'DM Serif Display',serif; font-size:22px; color:var(--${color || 'green'});">$${saved.toLocaleString()}</div>
-          <div style="font-size:13px; color:var(--text2);">of $${target.toLocaleString()}</div>
-        </div>
-      </div>
-      <div class="progress-track" style="margin-bottom:8px;">
-        <div class="progress-fill ${color}" style="width:${pct}%"></div>
-      </div>
-      <div style="display:flex; justify-content:space-between; font-size:13px; color:var(--text2);">
-        <span>${pct}% there</span>
-        <span>$${remaining.toLocaleString()} to go</span>
-      </div>
-      <div style="margin-top:14px; display:flex; gap:8px; align-items:center;">
-        <input type="number" placeholder="Add amount ($)" style="padding:8px 12px; font-size:13px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); width:160px; font-family:'DM Sans',sans-serif;">
-        <button class="btn btn-outline btn-sm">Add to goal</button>
-        <button class="btn btn-danger btn-sm" style="margin-left:auto;" onclick="deleteGoal(this)">Remove</button>
-      </div>
-    `;
-    document.getElementById('goals-list').appendChild(card);
-
-    document.getElementById('goal-name').value = '';
-    document.getElementById('goal-target').value = '';
-    document.getElementById('goal-saved').value = '';
-    document.getElementById('goal-date').value = '';
+  function loadGoals() {
+    db.from('savings_goals').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: true })
+      .then(function(res) {
+        var goals = res.data || [];
+        var list  = document.getElementById('goals-list');
+        if (!goals.length) {
+          list.innerHTML = '<div class="card" style="padding:32px;text-align:center;color:var(--text3);font-size:14px;">No savings goals yet — add your first goal above.</div>';
+          return;
+        }
+        list.innerHTML = goals.map(function(g) {
+          var pct  = Math.min(100, Math.round((g.saved / g.target) * 100));
+          var rem  = Math.max(0, g.target - g.saved);
+          var color = pct >= 75 ? 'var(--green)' : pct >= 40 ? 'var(--amber)' : 'var(--red)';
+          var fillClass = pct >= 75 ? '' : pct >= 40 ? 'amber' : 'red';
+          var dateStr = g.target_date ? new Date(g.target_date + 'T00:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'}) : 'No target date';
+          return '<div class="card goal-card" data-id="' + g.id + '">' +
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">' +
+              '<div><div style="font-weight:600;font-size:16px;margin-bottom:2px;">' + g.name + '</div><div style="font-size:13px;color:var(--text2);">Target: ' + dateStr + '</div></div>' +
+              '<div style="text-align:right;"><div style="font-family:'DM Serif Display',serif;font-size:22px;color:' + color + ';">$' + parseFloat(g.saved).toLocaleString() + '</div><div style="font-size:13px;color:var(--text2);">of $' + parseFloat(g.target).toLocaleString() + '</div></div>' +
+            '</div>' +
+            '<div class="progress-track" style="margin-bottom:8px;"><div class="progress-fill ' + fillClass + '" style="width:' + pct + '%"></div></div>' +
+            '<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--text2);"><span>' + pct + '% there</span><span>$' + rem.toLocaleString() + ' to go</span></div>' +
+            '<div style="margin-top:14px;display:flex;gap:8px;align-items:center;">' +
+              '<input type="number" placeholder="Add amount ($)" id="add-' + g.id + '" style="padding:8px 12px;font-size:13px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);width:160px;font-family:'DM Sans',sans-serif;">' +
+              '<button class="btn btn-outline btn-sm" onclick="addToGoal('' + g.id + '',' + g.saved + ')">Add to goal</button>' +
+              '<button class="btn btn-danger btn-sm" style="margin-left:auto;" onclick="deleteGoal('' + g.id + '')">Remove</button>' +
+            '</div>' +
+          '</div>';
+        }).join('');
+      });
   }
 
-  function deleteGoal(btn) { btn.closest('.goal-card').remove(); }
+  function addGoal() {
+    var name   = document.getElementById('goal-name').value.trim();
+    var target = parseFloat(document.getElementById('goal-target').value) || 0;
+    var saved  = parseFloat(document.getElementById('goal-saved').value) || 0;
+    var date   = document.getElementById('goal-date').value || null;
+    if (!name || !target) { alert('Please enter a name and target amount.'); return; }
+    db.from('savings_goals').insert({ user_id:currentUser.id, name:name, target:target, saved:saved, target_date:date })
+      .then(function(res) {
+        if (res.error) { alert('Error: ' + res.error.message); return; }
+        document.getElementById('goal-name').value   = '';
+        document.getElementById('goal-target').value = '';
+        document.getElementById('goal-saved').value  = '';
+        document.getElementById('goal-date').value   = '';
+        loadGoals();
+      });
+  }
+
+  function addToGoal(id, currentSaved) {
+    var input  = document.getElementById('add-' + id);
+    var amount = parseFloat(input.value) || 0;
+    if (!amount) return;
+    db.from('savings_goals').update({ saved: currentSaved + amount }).eq('id', id)
+      .then(function(res) {
+        if (res.error) { alert('Error: ' + res.error.message); return; }
+        loadGoals();
+      });
+  }
+
+  function deleteGoal(id) {
+    if (!confirm('Remove this savings goal?')) return;
+    db.from('savings_goals').delete().eq('id', id).then(function() { loadGoals(); });
+  }
 </script>
 
 </body>

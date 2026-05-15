@@ -116,170 +116,195 @@
 </div>
 
 <script>
-  let assets = [
-    { name:'Checking account',  amount:450,   cat:'liquid',   sub:'Current balance' },
-    { name:'Roth IRA',          amount:0,     cat:'retire',   sub:'Add current balance' },
-    { name:'401k',              amount:0,     cat:'retire',   sub:'Add current balance' },
-    { name:'Car (est. value)',  amount:38000, cat:'physical', sub:'2022 vehicle' },
-    { name:'Personal property', amount:3000,  cat:'physical', sub:'Furniture, electronics' },
-  ];
-  let liabilities = [
-    { name:'Car loan (GM Financial)', amount:46248, sub:'In collections' },
-    { name:'Collection accounts',     amount:20035, sub:'21 accounts'    },
-  ];
-  const history = [
-    { month:'Jan 2026', nw:-62000 },
-    { month:'Feb 2026', nw:-61200 },
-    { month:'Mar 2026', nw:-60100 },
-    { month:'Apr 2026', nw:-59500 },
-    { month:'May 2026', nw:null   },
-  ];
-  const catLabels = { liquid:'Liquid', retire:'Retirement', physical:'Physical' };
-  const catCls    = { liquid:'cb-liquid', retire:'cb-retire', physical:'cb-physical' };
+  var db          = (window.supabase || window.supabasejs).createClient(SUPABASE_URL, SUPABASE_KEY);
+  var currentUser = null;
+  var assets      = [];
+  var liabilities = [];
+  var editAsset   = null;
+  var editLiability = null;
+  var catLabels   = { liquid:'Liquid', retire:'Retirement', physical:'Physical' };
+
+  document.addEventListener('DOMContentLoaded', function() {
+    db.auth.getSession().then(function(res) {
+      if (!res.data || !res.data.session) { window.location.replace('login.html'); return; }
+      currentUser = res.data.session.user;
+      loadAll();
+    });
+  });
+
+  function loadAll() {
+    db.from('assets').select('*').eq('user_id', currentUser.id).then(function(res) {
+      assets = (res.data || []).map(function(a) {
+        return { id:a.id, name:a.name, amount:parseFloat(a.amount), cat:a.category||'liquid', sub:a.sub||'' };
+      });
+      db.from('liabilities').select('*').eq('user_id', currentUser.id).then(function(res2) {
+        liabilities = (res2.data || []).map(function(l) {
+          return { id:l.id, name:l.name, amount:parseFloat(l.amount), sub:l.sub||'' };
+        });
+        render();
+      });
+    });
+  }
 
   function fmt(n) { return (n<0?'-$':'$') + Math.abs(Math.round(n)).toLocaleString(); }
 
   function calc() {
-    const bycat = { liquid:0, retire:0, physical:0 };
-    assets.forEach(a => bycat[a.cat] = (bycat[a.cat]||0) + a.amount);
-    const ta = assets.reduce((s,a)=>s+a.amount, 0);
-    const tl = liabilities.reduce((s,l)=>s+l.amount, 0);
-    return { ta, tl, nw:ta-tl, ...bycat };
+    var bycat = { liquid:0, retire:0, physical:0 };
+    assets.forEach(function(a){ bycat[a.cat] = (bycat[a.cat]||0) + a.amount; });
+    var ta = assets.reduce(function(s,a){ return s+a.amount; }, 0);
+    var tl = liabilities.reduce(function(s,l){ return s+l.amount; }, 0);
+    return { ta:ta, tl:tl, nw:ta-tl, liquid:bycat.liquid, retire:bycat.retire, physical:bycat.physical };
   }
-
-  let editAsset = null, editLiability = null;
 
   function render() {
-    const { ta, tl, nw, liquid, retire, physical } = calc();
-    document.getElementById('nw-val').textContent = fmt(nw);
-    document.getElementById('nw-val').className   = 'nw-val' + (nw < 0 ? ' negative' : '');
-    document.getElementById('nw-sub').textContent = nw < 0
-      ? 'Your liabilities exceed your assets — each debt paid improves this'
-      : 'Your assets exceed your liabilities — great work!';
-    document.getElementById('pill-liquid').textContent     = fmt(liquid);
-    document.getElementById('pill-retire').textContent     = fmt(retire);
-    document.getElementById('pill-physical').textContent   = fmt(physical);
-    document.getElementById('pill-liabilities').textContent= fmt(tl);
-    document.getElementById('pill-dta').textContent        = ta > 0 ? Math.round((tl/ta)*100)+'%' : '—';
-    document.getElementById('assets-total').textContent    = fmt(ta);
-    document.getElementById('liabilities-total').textContent = fmt(tl);
+    var c = calc();
+    document.getElementById('nw-val').textContent = fmt(c.nw);
+    document.getElementById('nw-val').className   = 'nw-val' + (c.nw < 0 ? ' negative' : '');
+    document.getElementById('nw-sub').textContent = c.nw < 0 ? 'Your liabilities exceed your assets — each debt paid improves this' : 'Your assets exceed your liabilities — great work!';
+    document.getElementById('pill-liquid').textContent      = fmt(c.liquid);
+    document.getElementById('pill-retire').textContent      = fmt(c.retire);
+    document.getElementById('pill-physical').textContent    = fmt(c.physical);
+    document.getElementById('pill-liabilities').textContent = fmt(c.tl);
+    document.getElementById('pill-dta').textContent         = c.ta > 0 ? Math.round((c.tl/c.ta)*100)+'%' : '—';
+    document.getElementById('assets-total').textContent     = fmt(c.ta);
+    document.getElementById('liabilities-total').textContent = fmt(c.tl);
 
-    let html = '';
-    ['liquid','retire','physical'].forEach(cat => {
-      const items = assets.filter(a => a.cat === cat);
-      if (!items.length) return;
-      const catTot = items.reduce((s,a)=>s+a.amount,0);
-      html += `<div class="cat-label"><span>${catLabels[cat]}</span><span>${fmt(catTot)}</span></div>`;
-      items.forEach(a => {
-        const i = assets.indexOf(a);
-        if (editAsset === i) {
-          html += `<div class="item-row" style="background:var(--green-l); flex-direction:column; align-items:stretch; gap:8px;">
-            <div style="display:grid; grid-template-columns:1fr 100px; gap:8px;">
-              <input id="ea-name" type="text" value="${a.name}" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">
-              <input id="ea-amt" type="number" value="${a.amount}" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">
-            </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-              <input id="ea-sub" type="text" value="${a.sub}" placeholder="Description (optional)" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">
-              <select id="ea-cat" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">
-                <option value="liquid" ${a.cat==='liquid'?'selected':''}>Liquid</option>
-                <option value="retire" ${a.cat==='retire'?'selected':''}>Retirement</option>
-                <option value="physical" ${a.cat==='physical'?'selected':''}>Physical</option>
-              </select>
-            </div>
-            <div style="display:flex;gap:6px;">
-              <button class="btn btn-primary btn-sm" onclick="saveAsset(${i})">Save</button>
-              <button class="btn btn-sm" style="background:var(--bg2);color:var(--text2);border:none;" onclick="cancelAssetEdit()">Cancel</button>
-            </div>
-          </div>`;
-        } else {
-          html += `<div class="item-row"><div><div style="font-weight:500;">${a.name}</div><div class="item-sub">${a.sub}</div></div><div style="display:flex;align-items:center;gap:6px;"><span style="font-weight:600;">${fmt(a.amount)}</span><button class="btn btn-outline btn-sm" onclick="startAssetEdit(${i})">Edit</button><button class="del-btn" onclick="removeAsset(${i})">×</button></div></div>`;
-        }
+    var html = '';
+    if (!assets.length) {
+      html = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px;">No assets yet — add one below.</div>';
+    } else {
+      ['liquid','retire','physical'].forEach(function(cat) {
+        var items = assets.filter(function(a){ return a.cat === cat; });
+        if (!items.length) return;
+        var catTot = items.reduce(function(s,a){ return s+a.amount; }, 0);
+        html += '<div class="cat-label"><span>' + catLabels[cat] + '</span><span>' + fmt(catTot) + '</span></div>';
+        items.forEach(function(a) {
+          var i = assets.indexOf(a);
+          if (editAsset === i) {
+            html += '<div class="item-row" style="background:var(--green-l);flex-direction:column;align-items:stretch;gap:8px;">' +
+              '<div style="display:grid;grid-template-columns:1fr 100px;gap:8px;">' +
+                '<input id="ea-name" type="text" value="' + a.name + '" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">' +
+                '<input id="ea-amt" type="number" value="' + a.amount + '" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">' +
+              '</div>' +
+              '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+                '<input id="ea-sub" type="text" value="' + a.sub + '" placeholder="Description (optional)" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">' +
+                '<select id="ea-cat" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">' +
+                  '<option value="liquid"' + (a.cat==='liquid'?' selected':'') + '>Liquid</option>' +
+                  '<option value="retire"' + (a.cat==='retire'?' selected':'') + '>Retirement</option>' +
+                  '<option value="physical"' + (a.cat==='physical'?' selected':'') + '>Physical</option>' +
+                '</select>' +
+              '</div>' +
+              '<div style="display:flex;gap:6px;">' +
+                '<button class="btn btn-primary btn-sm" onclick="saveAsset(' + i + ')">Save</button>' +
+                '<button class="btn btn-sm" style="background:var(--bg2);color:var(--text2);border:none;" onclick="cancelAssetEdit()">Cancel</button>' +
+              '</div>' +
+            '</div>';
+          } else {
+            html += '<div class="item-row"><div><div style="font-weight:500;">' + a.name + '</div><div class="item-sub">' + a.sub + '</div></div>' +
+              '<div style="display:flex;align-items:center;gap:6px;"><span style="font-weight:600;">' + fmt(a.amount) + '</span>' +
+              '<button class="btn btn-outline btn-sm" onclick="startAssetEdit(' + i + ')">Edit</button>' +
+              '<button class="del-btn" onclick="removeAsset(' + i + ')">×</button></div></div>';
+          }
+        });
       });
-    });
+    }
     document.getElementById('assets-list').innerHTML = html;
 
-    document.getElementById('liabilities-list').innerHTML = liabilities.map((l,i) => {
-      if (editLiability === i) {
-        return `<div class="item-row" style="background:var(--red-l); flex-direction:column; align-items:stretch; gap:8px;">
-          <div style="display:grid; grid-template-columns:1fr 100px; gap:8px;">
-            <input id="el-name" type="text" value="${l.name}" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">
-            <input id="el-amt" type="number" value="${l.amount}" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">
-          </div>
-          <input id="el-sub" type="text" value="${l.sub}" placeholder="Description (optional)" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">
-          <div style="display:flex;gap:6px;">
-            <button class="btn btn-primary btn-sm" onclick="saveLiability(${i})">Save</button>
-            <button class="btn btn-sm" style="background:var(--bg2);color:var(--text2);border:none;" onclick="cancelLiabilityEdit()">Cancel</button>
-          </div>
-        </div>`;
-      }
-      return `<div class="item-row"><div><div style="font-weight:500;">${l.name}</div><div class="item-sub">${l.sub}</div></div><div style="display:flex;align-items:center;gap:6px;"><span style="font-weight:600;color:var(--red);">${fmt(l.amount)}</span><button class="btn btn-outline btn-sm" onclick="startLiabilityEdit(${i})">Edit</button><button class="del-btn" onclick="removeLiability(${i})">×</button></div></div>`;
-    }).join('');
+    if (!liabilities.length) {
+      document.getElementById('liabilities-list').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px;">No liabilities yet — add one below.</div>';
+    } else {
+      document.getElementById('liabilities-list').innerHTML = liabilities.map(function(l, i) {
+        if (editLiability === i) {
+          return '<div class="item-row" style="background:var(--red-l);flex-direction:column;align-items:stretch;gap:8px;">' +
+            '<div style="display:grid;grid-template-columns:1fr 100px;gap:8px;">' +
+              '<input id="el-name" type="text" value="' + l.name + '" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">' +
+              '<input id="el-amt" type="number" value="' + l.amount + '" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">' +
+            '</div>' +
+            '<input id="el-sub" type="text" value="' + l.sub + '" placeholder="Description (optional)" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">' +
+            '<div style="display:flex;gap:6px;">' +
+              '<button class="btn btn-primary btn-sm" onclick="saveLiability(' + i + ')">Save</button>' +
+              '<button class="btn btn-sm" style="background:var(--bg2);color:var(--text2);border:none;" onclick="cancelLiabilityEdit()">Cancel</button>' +
+            '</div></div>';
+        }
+        return '<div class="item-row"><div><div style="font-weight:500;">' + l.name + '</div><div class="item-sub">' + l.sub + '</div></div>' +
+          '<div style="display:flex;align-items:center;gap:6px;"><span style="font-weight:600;color:var(--red);">' + fmt(l.amount) + '</span>' +
+          '<button class="btn btn-outline btn-sm" onclick="startLiabilityEdit(' + i + ')">Edit</button>' +
+          '<button class="del-btn" onclick="removeLiability(' + i + ')">×</button></div></div>';
+      }).join('');
+    }
 
-    const cur = history.find(h => h.month === 'May 2026');
-    if (cur) cur.nw = nw;
-    const maxAbs = Math.max(...history.map(h=>Math.abs(h.nw||0)),1);
-    document.getElementById('trend-list').innerHTML = history.map((h,i) => {
-      const prev   = i > 0 ? history[i-1].nw : null;
-      const change = h.nw !== null && prev !== null ? h.nw - prev : null;
-      const pct    = h.nw !== null ? Math.round((Math.abs(h.nw)/maxAbs)*100) : 0;
-      const isCur  = h.month === 'May 2026';
-      return `<div class="trend-row" style="${isCur?'background:var(--bg);':''}">
-        <div style="font-size:12px;color:var(--text2);${isCur?'font-weight:600;color:var(--text);':''}">${h.month}</div>
-        <div><div class="bar-track"><div class="${h.nw<0?'bar-fill-neg':'bar-fill-pos'}" style="width:${pct}%;"></div></div></div>
-        <div style="font-weight:600;color:${h.nw<0?'var(--red)':'var(--green)'};">${h.nw!==null?fmt(h.nw):'—'}</div>
-        <div style="font-weight:500;color:${change===null?'var(--text3)':change>0?'var(--green)':'var(--red)'};">${change!==null?(change>0?'+':'')+fmt(change):'—'}</div>
-      </div>`;
-    }).join('');
+    // Trend — calculate from current month only for now
+    var now = new Date();
+    var monthLabel = now.toLocaleDateString('en-US', { month:'long', year:'numeric' });
+    document.getElementById('trend-list').innerHTML =
+      '<div class="trend-row"><div style="font-size:12px;font-weight:600;color:var(--text);">' + monthLabel + '</div>' +
+      '<div><div class="bar-track"><div class="' + (c.nw<0?'bar-fill-neg':'bar-fill-pos') + '" style="width:60%;"></div></div></div>' +
+      '<div style="font-weight:600;color:' + (c.nw<0?'var(--red)':'var(--green)') + ';">' + fmt(c.nw) + '</div>' +
+      '<div style="color:var(--text3);">Current month</div></div>';
   }
 
-  function startAssetEdit(i)    { editAsset = i; editLiability = null; render(); }
-  function cancelAssetEdit()    { editAsset = null; render(); }
-  function startLiabilityEdit(i){ editLiability = i; editAsset = null; render(); }
-  function cancelLiabilityEdit(){ editLiability = null; render(); }
+  function startAssetEdit(i)     { editAsset = i; editLiability = null; render(); }
+  function cancelAssetEdit()     { editAsset = null; render(); }
+  function startLiabilityEdit(i) { editLiability = i; editAsset = null; render(); }
+  function cancelLiabilityEdit() { editLiability = null; render(); }
 
   function saveAsset(i) {
-    const name   = document.getElementById('ea-name').value.trim();
-    const amount = parseFloat(document.getElementById('ea-amt').value) || 0;
-    const sub    = document.getElementById('ea-sub').value.trim();
-    const cat    = document.getElementById('ea-cat').value;
+    var name = document.getElementById('ea-name').value.trim();
+    var amount = parseFloat(document.getElementById('ea-amt').value) || 0;
+    var sub  = document.getElementById('ea-sub').value.trim();
+    var cat  = document.getElementById('ea-cat').value;
     if (!name) return;
-    assets[i] = { name, amount, cat, sub };
-    editAsset = null;
-    render();
+    db.from('assets').update({ name:name, amount:amount, sub:sub, category:cat }).eq('id', assets[i].id).then(function(res) {
+      if (res.error) { alert('Error: ' + res.error.message); return; }
+      assets[i] = { id:assets[i].id, name:name, amount:amount, cat:cat, sub:sub };
+      editAsset = null; render();
+    });
   }
 
   function saveLiability(i) {
-    const name   = document.getElementById('el-name').value.trim();
-    const amount = parseFloat(document.getElementById('el-amt').value) || 0;
-    const sub    = document.getElementById('el-sub').value.trim();
+    var name = document.getElementById('el-name').value.trim();
+    var amount = parseFloat(document.getElementById('el-amt').value) || 0;
+    var sub  = document.getElementById('el-sub').value.trim();
     if (!name) return;
-    liabilities[i] = { name, amount, sub };
-    editLiability = null;
-    render();
+    db.from('liabilities').update({ name:name, amount:amount, sub:sub }).eq('id', liabilities[i].id).then(function(res) {
+      if (res.error) { alert('Error: ' + res.error.message); return; }
+      liabilities[i] = { id:liabilities[i].id, name:name, amount:amount, sub:sub };
+      editLiability = null; render();
+    });
   }
 
   function addAsset() {
-    const name   = document.getElementById('asset-name').value.trim();
-    const amount = parseFloat(document.getElementById('asset-amt').value)||0;
-    const cat    = document.querySelector('input[name="acat"]:checked')?.value||'liquid';
-    if (!name||!amount) return;
-    assets.push({name,amount,cat,sub:''});
-    document.getElementById('asset-name').value='';
-    document.getElementById('asset-amt').value='';
-    render();
+    var name = document.getElementById('asset-name').value.trim();
+    var amount = parseFloat(document.getElementById('asset-amt').value) || 0;
+    var cat  = document.querySelector('input[name="acat"]:checked') ? document.querySelector('input[name="acat"]:checked').value : 'liquid';
+    if (!name || !amount) return;
+    db.from('assets').insert({ user_id:currentUser.id, name:name, amount:amount, category:cat, sub:'' }).then(function(res) {
+      if (res.error) { alert('Error: ' + res.error.message); return; }
+      document.getElementById('asset-name').value = '';
+      document.getElementById('asset-amt').value  = '';
+      loadAll();
+    });
   }
+
   function addLiability() {
-    const name   = document.getElementById('liability-name').value.trim();
-    const amount = parseFloat(document.getElementById('liability-amt').value)||0;
-    if (!name||!amount) return;
-    liabilities.push({name,amount,sub:''});
-    document.getElementById('liability-name').value='';
-    document.getElementById('liability-amt').value='';
-    render();
+    var name = document.getElementById('liability-name').value.trim();
+    var amount = parseFloat(document.getElementById('liability-amt').value) || 0;
+    if (!name || !amount) return;
+    db.from('liabilities').insert({ user_id:currentUser.id, name:name, amount:amount, sub:'' }).then(function(res) {
+      if (res.error) { alert('Error: ' + res.error.message); return; }
+      document.getElementById('liability-name').value = '';
+      document.getElementById('liability-amt').value  = '';
+      loadAll();
+    });
   }
-  function removeAsset(i)     { assets.splice(i,1);      render(); }
-  function removeLiability(i) { liabilities.splice(i,1); render(); }
-  render();
+
+  function removeAsset(i) {
+    db.from('assets').delete().eq('id', assets[i].id).then(function() { assets.splice(i,1); render(); });
+  }
+
+  function removeLiability(i) {
+    db.from('liabilities').delete().eq('id', liabilities[i].id).then(function() { liabilities.splice(i,1); render(); });
+  }
 </script>
 </body>
 </html>

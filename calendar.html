@@ -166,7 +166,182 @@
     { label:'Groceries',   amount:500,   day:null, category:'Food'          },
   ];
 
-  let currentYear = 2026, currentMonth = 4, selectedDate = null;
+  var currentYear = 2026, currentMonth = 4, selectedDate = null;
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function dateKey(y, m, d) { return `${y}-${pad(m+1)}-${pad(d)}`; }
+  function fmt(n) { return '$' + Math.round(n).toLocaleString(); }
+
+  function buildEvents(y, m) {
+    var events = {};<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calendar — CheckMate Budget</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="supabase.js"></script>
+  <script src="auth-guard.js"></script>
+  
+  <style>
+    .cal-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 24px; }
+    .cal-head { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); background: var(--bg); border-bottom: 1px solid var(--border); }
+    .cal-head-cell { padding: 10px 0; text-align: center; font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); }
+    .cal-cell { min-height: 90px; border-right: 1px solid var(--bg2); border-bottom: 1px solid var(--bg2); padding: 8px 6px 6px; cursor: pointer; transition: background 0.1s; }
+    .cal-cell:nth-child(7n) { border-right: none; }
+    .cal-cell:hover { background: #fdfcfa; }
+    .cal-cell.today { background: var(--green-l); }
+    .cal-cell.today .day-num { background: var(--green); color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-weight: 600; }
+    .cal-cell.payday { background: #e8f3ed; }
+    .cal-cell.other-month { background: #faf8f5; }
+    .cal-cell.other-month .day-num { color: var(--border); }
+    .cal-cell.selected { outline: 2px solid var(--green); outline-offset: -2px; background: #fdfcfa; }
+    .day-num { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 4px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
+    .cal-event { font-size: 10px; font-weight: 500; padding: 2px 5px; border-radius: 4px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ev-expense { background: var(--amber-l); color: var(--amber); }
+    .ev-bill    { background: var(--red-l);   color: var(--red); }
+    .ev-income  { background: var(--green-l); color: var(--green); }
+    .day-total  { font-size: 10px; color: var(--text3); margin-top: 2px; }
+    .legend { display: flex; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
+    .leg-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
+    .leg-dot { width: 10px; height: 10px; border-radius: 3px; }
+    .detail-panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; margin-bottom: 24px; }
+    .detail-title { font-family: 'DM Serif Display', serif; font-size: 18px; color: var(--text); margin-bottom: 14px; }
+    .detail-item { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--bg2); font-size: 14px; }
+    .detail-item:last-child { border-bottom: none; }
+    .detail-empty { font-size: 14px; color: var(--text3); padding: 12px 0; }
+    .forecast-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .fc-row { display: grid; grid-template-columns: 90px 1fr 110px 120px; gap: 8px; align-items: center; padding: 11px 16px; border-bottom: 1px solid var(--bg2); font-size: 13px; }
+    .fc-row:last-child { border-bottom: none; }
+    .fc-head { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; background: var(--bg); }
+    .bal-bar { height: 4px; background: var(--bg2); border-radius: 99px; margin-top: 4px; }
+    .bal-bar-fill { height: 100%; border-radius: 99px; background: var(--green); }
+    .payday-setup { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .payday-setup label { font-size: 13px; color: var(--text2); font-weight: 500; }
+  </style>
+</head>
+<body>
+
+<script src="nav.js"></script>
+
+<div class="page">
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px;">
+    <div class="page-header" style="margin-bottom:0;">
+      <h1>Calendar</h1>
+      <p>Your bills, paydays, and balance forecast — all in one view.</p>
+    </div>
+    <div style="display:flex; align-items:center; gap:10px; margin-top:6px;">
+      <button class="btn btn-outline btn-sm" onclick="changeMonth(-1)">&#8592; Prev</button>
+      <span id="month-label" style="font-size:15px; font-weight:600; min-width:120px; text-align:center; color:var(--text);"></span>
+      <button class="btn btn-outline btn-sm" onclick="changeMonth(1)">Next &#8594;</button>
+    </div>
+  </div>
+
+  <!-- Payday setup -->
+  <div class="payday-setup">
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      <label style="font-size:12px; color:var(--text3); font-weight:600; text-transform:uppercase; letter-spacing:0.06em;">Pay schedule</label>
+      <select style="padding:8px 12px; font-size:13px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); font-family:'DM Sans',sans-serif; color:var(--text);" id="pay-schedule" onchange="renderAll()">
+        <option value="bimonthly">6th and 21st of each month</option>
+        <option value="biweekly">Every 2 weeks</option>
+      </select>
+    </div>
+    <div style="width:1px; background:var(--border); align-self:stretch; margin:0 4px;"></div>
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      <label style="font-size:12px; color:var(--text3); font-weight:600; text-transform:uppercase; letter-spacing:0.06em;">6th payday hours</label>
+      <select style="padding:8px 12px; font-size:13px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); font-family:'DM Sans',sans-serif; color:var(--text);" id="pay-amount-6" onchange="renderAll()">
+        <option value="2486">80 hrs — $2,486</option>
+        <option value="2798">88 hrs — $2,798</option>
+        <option value="3109" selected>96 hrs — $3,109</option>
+      </select>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      <label style="font-size:12px; color:var(--text3); font-weight:600; text-transform:uppercase; letter-spacing:0.06em;">21st payday hours</label>
+      <select style="padding:8px 12px; font-size:13px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); font-family:'DM Sans',sans-serif; color:var(--text);" id="pay-amount-21" onchange="renderAll()">
+        <option value="2486">80 hrs — $2,486</option>
+        <option value="2798" selected>88 hrs — $2,798</option>
+        <option value="3109">96 hrs — $3,109</option>
+      </select>
+    </div>
+    <div style="width:1px; background:var(--border); align-self:stretch; margin:0 4px;"></div>
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      <label style="font-size:12px; color:var(--text3); font-weight:600; text-transform:uppercase; letter-spacing:0.06em;">Current balance</label>
+      <input type="number" id="start-bal" value="450" style="width:110px; padding:8px 12px; font-size:13px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); font-family:'DM Sans',sans-serif; color:var(--text);" oninput="renderAll()">
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid-3" style="margin-bottom:20px;">
+    <div class="card">
+      <div class="card-title">Total bills due</div>
+      <div class="card-value red" id="stat-bills">$0</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Total paychecks</div>
+      <div class="card-value green" id="stat-pay">$0</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Projected end balance</div>
+      <div class="card-value" id="stat-end">$0</div>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="leg-item"><div class="leg-dot" style="background:var(--green-l); border:1px solid var(--green-m);"></div>Payday</div>
+    <div class="leg-item"><div class="leg-dot" style="background:var(--red-l); border:1px solid #f5bbb4;"></div>Bill due</div>
+    <div class="leg-item"><div class="leg-dot" style="background:var(--amber-l); border:1px solid #f0c88a;"></div>Expense</div>
+  </div>
+
+  <!-- Calendar -->
+  <div class="cal-card">
+    <div class="cal-head">
+      <div class="cal-head-cell">Sun</div>
+      <div class="cal-head-cell">Mon</div>
+      <div class="cal-head-cell">Tue</div>
+      <div class="cal-head-cell">Wed</div>
+      <div class="cal-head-cell">Thu</div>
+      <div class="cal-head-cell">Fri</div>
+      <div class="cal-head-cell">Sat</div>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+  </div>
+
+  <!-- Day detail -->
+  <div class="detail-panel">
+    <div class="detail-title" id="detail-title">Click a day to see details</div>
+    <div id="detail-list"><p class="detail-empty">Select a date on the calendar above.</p></div>
+  </div>
+
+  <!-- Balance forecast -->
+  <div class="section-header" style="margin-bottom:14px;">
+    <h2>Balance forecast — day by day</h2>
+  </div>
+  <div class="forecast-card">
+    <div class="fc-row fc-head">
+      <div>Date</div><div>Event</div><div>Amount</div><div style="text-align:right;">Running balance</div>
+    </div>
+    <div id="forecast-body"></div>
+  </div>
+</div>
+
+<script>
+  // Your real bills — day:null means no fixed date (shown as floating)
+  const bills = [
+    { label:'Cell Phone',  amount:160,   day:15,   category:'Housing'       },
+    { label:'Internet',    amount:160,   day:21,   category:'Utilities'     },
+    { label:'Car Payment', amount:1015,  day:8,    category:'Utilities'     },
+    { label:'Internet 2',  amount:200,   day:21,   category:'Utilities'     },
+    { label:'Insurance',   amount:202,   day:21,   category:'Insurance'     },
+    { label:'Diapers',     amount:140,   day:null, category:'Utilities'     },
+    { label:'Tithe',       amount:1000,  day:null, category:'Giving'        },
+    { label:'Gas',         amount:250,   day:null, category:'Transportation' },
+    { label:'Groceries',   amount:500,   day:null, category:'Food'          },
+  ];
+
+  var currentYear = 2026, currentMonth = 4, selectedDate = null;
 
   function pad(n) { return String(n).padStart(2, '0'); }
   function dateKey(y, m, d) { return `${y}-${pad(m+1)}-${pad(d)}`; }

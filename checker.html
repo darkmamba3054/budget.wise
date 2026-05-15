@@ -106,18 +106,10 @@
 
 <script>
   // Decisions stored with comments
-  let decisions = [
-    { id:'d1', name:'New desk chair', price:280, score:5, decision:'bought', date:'May 8', comments:[
-      { author:'Victor', date:'May 9', text:'Good call — you needed this for your back. Worth it.' }
-    ]},
-    { id:'d2', name:'Gaming keyboard', price:140, score:2, decision:'waited', date:'May 3', comments:[] },
-    { id:'d3', name:'Smart watch', price:320, score:1, decision:'skipped', date:'Apr 28', comments:[
-      { author:'Victor', date:'Apr 29', text:'Smart move skipping this one. Not the right time with the debt paydown happening.' }
-    ]},
-  ];
+  var decisions = [];
 
-  let openDecision = null;
-  const isReadOnly = window.IS_OWN_ACCOUNT === false;
+  var openDecision = null;
+  var isReadOnly = window.IS_OWN_ACCOUNT === false;
 
   function renderDecisions() {
     const list = document.getElementById('decisions-list');
