@@ -94,9 +94,9 @@
 
   <!-- Stats -->
   <div class="grid-3" style="margin-bottom:20px;">
-    <div class="card"><div class="card-title">Total bills due</div><div class="card-value red" id="stat-bills">$0</div></div>
+    <div class="card"><div class="card-title">Total bills due</div><div class="card-value red" id="stat-bills">$0</div><div class="card-sub" id="stat-bills-sub"></div></div>
     <div class="card"><div class="card-title">Total paychecks</div><div class="card-value green" id="stat-pay">$0</div></div>
-    <div class="card"><div class="card-title">Projected end balance</div><div class="card-value" id="stat-end">$0</div></div>
+    <div class="card"><div class="card-title">Projected end balance</div><div class="card-value" id="stat-end">$0</div><div class="card-sub">After all bills and income</div></div>
   </div>
 
   <!-- Legend -->
@@ -247,11 +247,16 @@ function renderAll() {
   var events   = buildEvents(currentYear, currentMonth);
   var forecast = buildForecast(currentYear, currentMonth);
 
-  // Stats
-  var totalBills = forecast.filter(function(r){ return r.type==='bill'; }).reduce(function(s,r){ return s+r.amount; }, 0);
-  var totalPay   = forecast.filter(function(r){ return r.type==='income'; }).reduce(function(s,r){ return s+r.amount; }, 0);
-  var endBal     = forecast.length ? forecast[forecast.length-1].bal : 0;
+  // Stats — include ALL bills (fixed + floating) in total
+  var fixedBills    = forecast.filter(function(r){ return r.type==='bill'; }).reduce(function(s,r){ return s+r.amount; }, 0);
+  var floatingBills = bills.filter(function(b){ return !b.day; }).reduce(function(s,b){ return s+b.amount; }, 0);
+  var totalBills    = fixedBills + floatingBills;
+  var totalPay      = forecast.filter(function(r){ return r.type==='income'; }).reduce(function(s,r){ return s+r.amount; }, 0);
+  var startBal      = parseFloat(document.getElementById('start-bal').value) || 0;
+  var endBal        = startBal + totalPay - totalBills;
+
   document.getElementById('stat-bills').textContent = fmt(totalBills);
+  document.getElementById('stat-bills-sub').textContent = fmt(fixedBills) + ' fixed + ' + fmt(floatingBills) + ' floating';
   document.getElementById('stat-pay').textContent   = fmt(totalPay);
   var endEl = document.getElementById('stat-end');
   endEl.textContent = fmt(endBal);
