@@ -129,7 +129,8 @@ function renderGoals() {
     transferSection     += '</div></div>';
 
     // Remove
-    var footer = '<div style="border-top:1px solid var(--border);padding-top:14px;text-align:right;">';
+    var footer = '<div style="border-top:1px solid var(--border);padding-top:14px;display:flex;justify-content:space-between;align-items:center;">';
+    footer    += '<button class="btn btn-outline btn-sm" onclick="editGoal(\'' + g.id + '\',' + g.target + ',\'' + (g.target_date||'') + '\',\'' + g.name + '\')">Edit goal</button>';
     footer    += '<button class="btn btn-sm" style="background:var(--red-l);color:var(--red);border:none;" onclick="deleteGoal(\'' + g.id + '\')">Remove goal</button>';
     footer    += '</div>';
 
@@ -196,6 +197,19 @@ function transferGoal(fromId, fromSaved) {
           amtEl.value = '';
           setTimeout(loadGoals, 300);
         });
+    });
+}
+
+function editGoal(id, currentTarget, currentDate, currentName) {
+  var name = prompt('Goal name:', currentName);
+  if (name === null) return;
+  var target = parseFloat(prompt('Target amount ($):', currentTarget));
+  if (isNaN(target) || target <= 0) { alert('Please enter a valid target amount.'); return; }
+  var date = prompt('Target date (YYYY-MM-DD, or leave blank):', currentDate) || null;
+  db.from('savings_goals').update({ name:name, target:target, target_date:date||null }).eq('id', id)
+    .then(function(res) {
+      if (res.error) { alert('Error: ' + res.error.message); return; }
+      setTimeout(loadGoals, 300);
     });
 }
 

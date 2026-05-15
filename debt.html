@@ -8,128 +8,72 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="supabase.js"></script>
   <script src="auth-guard.js"></script>
-  
   <style>
-    .snowball-banner { background: var(--green-l); border: 1px solid var(--green-m); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 20px; display: flex; align-items: flex-start; gap: 12px; }
-    .snowball-icon { font-size: 20px; flex-shrink: 0; }
-    .snowball-text { font-size: 13px; color: #2a5c3f; line-height: 1.6; }
-    .snowball-text strong { font-weight: 600; }
-    .controls { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
-    .search { padding: 7px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; background: var(--card); color: var(--text); font-family: 'DM Sans', sans-serif; outline: none; width: 200px; }
-    .search:focus { border-color: var(--green); }
-    .filter-btn { padding: 6px 14px; border-radius: 99px; font-size: 12px; font-weight: 500; border: 1px solid var(--border); background: var(--card); color: var(--text2); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s; }
+    .debt-name { font-weight: 500; font-size: 13px; }
+    .debt-sub  { font-size: 11px; color: var(--text3); margin-top: 2px; }
+    .rank-num  { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--bg2); font-size: 11px; font-weight: 600; margin-right: 4px; }
+    .snowball-next td { background: var(--green-l) !important; }
+    .snowball-tag { display: inline-block; background: var(--green); color: white; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 99px; margin-left: 4px; letter-spacing: 0.05em; vertical-align: middle; }
+    .settled-row td { opacity: 0.4; text-decoration: line-through; }
+    .filter-btn { padding: 5px 12px; border-radius: 99px; font-size: 12px; cursor: pointer; border: 1px solid var(--border); background: var(--card); color: var(--text2); font-family: 'DM Sans', sans-serif; }
     .filter-btn.active { background: var(--green); color: white; border-color: var(--green); }
-    .debt-table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    thead th { text-align: left; font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; padding: 10px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
-    tbody td { padding: 12px 12px; border-bottom: 1px solid var(--bg2); vertical-align: middle; }
-    tbody tr:last-child td { border-bottom: none; }
-    tbody tr:hover td { background: var(--bg); }
-    tbody tr.snowball-next td { background: var(--green-l); }
-    .debt-name { font-weight: 500; color: var(--text); }
-    .debt-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
-    .prog-track { height: 4px; background: var(--bg2); border-radius: 99px; overflow: hidden; margin-top: 5px; min-width: 80px; }
-    .prog-fill { height: 100%; border-radius: 99px; background: var(--green); }
-    .inline-input { width: 100px; padding: 4px 8px; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text); outline: none; }
-    .inline-input:focus { border-color: var(--green); background: var(--card); }
-    .inline-date { width: 120px; }
-    .actions { display: flex; gap: 5px; }
-    .act-btn { padding: 4px 9px; border-radius: 5px; font-size: 11px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--bg); color: var(--text2); font-family: 'DM Sans', sans-serif; white-space: nowrap; }
-    .act-btn.green { background: var(--green-l); color: var(--green); border-color: var(--green-m); }
-    .act-btn.red { background: var(--red-l); color: var(--red); border-color: #f5bbb4; }
-    .snowball-tag { font-size: 10px; background: var(--green); color: white; padding: 1px 6px; border-radius: 4px; margin-left: 5px; vertical-align: middle; }
-    .rank-num { color: var(--text3); font-size: 12px; }
-    .settled-row td { opacity: 0.45; text-decoration: line-through; }
-    .add-form { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; }
-    .add-form h2 { font-family: 'DM Serif Display', serif; font-size: 18px; margin-bottom: 16px; }
-    .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-    @media(max-width:640px) { .form-grid { grid-template-columns: 1fr 1fr; } }
+    .inline-input { padding: 5px 8px; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; width: 100%; outline: none; }
+    .act-btn { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 500; cursor: pointer; border: none; font-family: 'DM Sans', sans-serif; }
+    .act-btn.green { background: var(--green-l); color: var(--green); }
+    .act-btn.red   { background: var(--red-l);   color: var(--red);   }
+    .edit-btn { padding: 3px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); cursor: pointer; font-family: DM Sans,sans-serif; color: var(--text2); font-size: 12px; }
+    .edit-btn:hover { border-color: var(--green); color: var(--green); }
+    .tip-box { background: var(--green-l); border: 1px solid var(--green-m); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 13px; color: #2a5c3f; margin-bottom: 20px; line-height: 1.6; }
   </style>
 </head>
 <body>
-
 <script src="nav.js"></script>
-
 <div class="page">
   <div class="page-header">
     <h1>Debt Tracker</h1>
-    <p>Snowball method — tackle smallest balances first to build momentum.</p>
+    <p>Track every account, follow the snowball method, and celebrate each win.</p>
   </div>
 
-  <!-- Summary cards -->
-  <div class="grid-3" style="margin-bottom:20px;" id="summary-cards"></div>
+  <div class="grid-3" style="margin-bottom:16px;" id="summary-cards"></div>
+  <div class="tip-box" id="snowball-tip">Add your debts below to see your snowball target.</div>
 
-  <!-- Snowball tip -->
-  <div class="snowball-banner">
-    <div class="snowball-icon">❄️</div>
-    <div class="snowball-text" id="snowball-tip"></div>
-  </div>
-
-  <!-- Add new debt form -->
-  <div class="add-form">
-    <h2>Add a debt</h2>
-    <div class="form-grid">
-      <div class="form-group">
-        <label>Debt name</label>
-        <input type="text" id="add-name" placeholder="e.g. Credit One Bank">
+  <div class="card" style="margin-bottom:20px;">
+    <div class="section-header" style="margin-bottom:16px;"><h2>Add a debt</h2></div>
+    <div class="form-row">
+      <div class="form-group"><label>Debt / Account name</label><input type="text" id="add-name" placeholder="e.g. Capital One"></div>
+      <div class="form-group"><label>Creditor</label><input type="text" id="add-creditor" placeholder="Original creditor"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Collection agency</label><input type="text" id="add-agency" placeholder="e.g. Portfolio Recovery (or Unknown)"></div>
+      <div class="form-group"><label>Balance ($)</label><input type="number" id="add-balance" placeholder="0.00" min="0" step="0.01"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Priority</label>
+        <select id="add-priority"><option>Low</option><option>Medium</option><option>High</option></select>
       </div>
-      <div class="form-group">
-        <label>Original creditor</label>
-        <input type="text" id="add-creditor" placeholder="e.g. Capital One">
-      </div>
-      <div class="form-group">
-        <label>Collection agency</label>
-        <input type="text" id="add-agency" placeholder="e.g. Midland Credit">
-      </div>
-      <div class="form-group">
-        <label>Current balance ($)</label>
-        <input type="number" id="add-balance" placeholder="0.00" min="0" step="0.01">
-      </div>
-      <div class="form-group">
-        <label>Priority</label>
-        <select id="add-priority">
-          <option>Low</option>
-          <option>Medium</option>
-          <option>High</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Need to call?</label>
-        <select id="add-call">
-          <option value="false">No</option>
-          <option value="true">Yes</option>
-        </select>
+      <div class="form-group"><label>Need to call?</label>
+        <select id="add-call"><option value="false">No</option><option value="true">Yes</option></select>
       </div>
     </div>
     <button class="btn btn-primary" onclick="addDebt()">Add debt</button>
+    <div id="debt-msg" style="font-size:13px;margin-top:8px;display:none;"></div>
   </div>
 
-  <!-- Filters -->
-  <div class="controls">
-    <input class="search" type="text" placeholder="Search debts..." oninput="filterDebts(this.value)">
-    <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
-    <button class="filter-btn" onclick="setFilter('high', this)">High priority</button>
-    <button class="filter-btn" onclick="setFilter('call', this)">Need to call</button>
-    <button class="filter-btn" onclick="setFilter('car', this)">Car loan</button>
-    <button class="filter-btn" onclick="setFilter('settled', this)">Settled</button>
+  <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+    <button class="filter-btn active" onclick="setFilter('all',this)">Active</button>
+    <button class="filter-btn" onclick="setFilter('high',this)">High priority</button>
+    <button class="filter-btn" onclick="setFilter('call',this)">Need to call</button>
+    <button class="filter-btn" onclick="setFilter('settled',this)">Settled</button>
+    <input type="text" placeholder="Search..." oninput="filterSearch(this.value)" style="padding:5px 12px;border:1px solid var(--border);border-radius:99px;font-size:12px;font-family:'DM Sans',sans-serif;background:var(--card);color:var(--text);outline:none;margin-left:auto;">
   </div>
 
-  <!-- Table -->
-  <div class="card" style="padding:0; overflow:hidden;">
-    <div class="debt-table-wrap">
+  <div class="card" style="padding:0;overflow:hidden;">
+    <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>#</th>
-            <th>Debt / Creditor</th>
-            <th>Collection Agency</th>
-            <th>Balance</th>
-            <th>Settlement Offer</th>
-            <th>Payment Plan</th>
-            <th>Priority</th>
-            <th>Call?</th>
-            <th>Next Action</th>
-            <th>Actions</th>
+            <th>#</th><th>Debt / Creditor</th><th>Agency</th><th>Balance</th>
+            <th>Settlement offer</th><th>Notes</th><th>Priority</th><th>Call?</th><th>Actions</th>
           </tr>
         </thead>
         <tbody id="debt-tbody"></tbody>
@@ -139,111 +83,152 @@
 </div>
 
 <script>
-  var db          = (window.supabase || window.supabasejs).createClient(SUPABASE_URL, SUPABASE_KEY);
-  var currentUser = null;
-  var debts       = [];
-  var currentFilter = 'all';
-  var searchTerm    = '';
+var db = (window.supabase || window.supabasejs).createClient(SUPABASE_URL, SUPABASE_KEY);
+var currentUser = null;
+var debts = [];
+var currentFilter = 'all';
+var searchTerm = '';
 
-  document.addEventListener('DOMContentLoaded', function() {
-    db.auth.getSession().then(function(res) {
-      if (!res.data || !res.data.session) { window.location.replace('login.html'); return; }
-      currentUser = res.data.session.user;
-      loadDebts();
-    });
+document.addEventListener('DOMContentLoaded', function() {
+  db.auth.getSession().then(function(res) {
+    if (!res.data || !res.data.session) { window.location.replace('login.html'); return; }
+    currentUser = res.data.session.user;
+    loadDebts();
   });
+});
 
-  function loadDebts() {
-    db.from('debts').select('*').eq('user_id', currentUser.id).order('balance', { ascending: true })
-      .then(function(res) {
-        debts = (res.data || []).map(function(d) {
-          return { id:d.id, name:d.name, agency:d.agency||'Unknown', creditor:d.creditor||'', balance:parseFloat(d.balance), settlement:d.our_offer||'', plan:d.notes||'', nextAction:'', priority:d.priority||'Low', call:d.call||false, settled:d.settled||false };
-        });
-        renderSummary();
-        renderTable();
+function fmt(n) { return '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits:0}); }
+
+function loadDebts() {
+  db.from('debts').select('*').eq('user_id', currentUser.id).order('balance', {ascending:true})
+    .then(function(res) {
+      if (res.error) { console.error(res.error); return; }
+      debts = (res.data || []).map(function(d) {
+        return { id:d.id, name:d.name, agency:d.agency||'Unknown', creditor:d.creditor||'', balance:parseFloat(d.balance), settlement:d.our_offer||'', notes:d.notes||'', priority:d.priority||'Low', call:d.call||false, settled:d.settled||false };
       });
-  }
-
-  function fmt(n) { return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits:0, maximumFractionDigits:0 }); }
-  function getSorted() { return debts.slice().sort(function(a,b){ return a.balance - b.balance; }); }
-
-  function renderSummary() {
-    var total = debts.reduce(function(s,d){ return s+d.balance; }, 0);
-    var excl  = debts.filter(function(d){ return !d.name.toLowerCase().includes('car'); }).reduce(function(s,d){ return s+d.balance; }, 0);
-    var calls = debts.filter(function(d){ return d.call && !d.settled; }).length;
-    var next  = getSorted().filter(function(d){ return !d.settled; })[0];
-    document.getElementById('summary-cards').innerHTML =
-      '<div class="card"><div class="card-title">Total debt</div><div class="card-value red">' + fmt(total) + '</div><div class="card-sub">' + debts.length + ' accounts</div></div>' +
-      '<div class="card"><div class="card-title">Excl. car loan</div><div class="card-value amber">' + fmt(excl) + '</div><div class="card-sub">Collection accounts</div></div>' +
-      '<div class="card"><div class="card-title">Need to call</div><div class="card-value amber">' + calls + '</div><div class="card-sub">Active accounts</div></div>';
-    document.getElementById('snowball-tip').innerHTML = next
-      ? '<strong>Snowball target:</strong> Focus every extra dollar on <strong>' + next.name + ' (' + fmt(next.balance) + ')</strong> — smallest active balance.'
-      : debts.length ? 'All debts settled!' : 'Add your first debt below to start tracking.';
-  }
-
-  function renderTable() {
-    var list = getSorted();
-    if (currentFilter === 'high')    list = list.filter(function(d){ return d.priority === 'High'; });
-    if (currentFilter === 'call')    list = list.filter(function(d){ return d.call && !d.settled; });
-    if (currentFilter === 'car')     list = list.filter(function(d){ return d.name.toLowerCase().includes('car'); });
-    if (currentFilter === 'settled') list = list.filter(function(d){ return d.settled; });
-    if (currentFilter === 'all')     list = list.filter(function(d){ return !d.settled; });
-    if (searchTerm) list = list.filter(function(d){ return d.name.toLowerCase().includes(searchTerm)||d.creditor.toLowerCase().includes(searchTerm)||d.agency.toLowerCase().includes(searchTerm); });
-    if (!debts.length) { document.getElementById('debt-tbody').innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text3);">No debts yet — add your first account above.</td></tr>'; return; }
-    if (!list.length)  { document.getElementById('debt-tbody').innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text3);">No debts match this filter.</td></tr>'; return; }
-    var firstActive = getSorted().findIndex(function(d){ return !d.settled; });
-    document.getElementById('debt-tbody').innerHTML = list.map(function(d) {
-      var i = debts.indexOf(d), rank = getSorted().indexOf(d)+1, isNext = getSorted().indexOf(d)===firstActive;
-      var priClass = d.priority==='High'?'badge-red':d.priority==='Medium'?'badge-amber':'badge-gray';
-      return '<tr class="'+(d.settled?'settled-row':isNext?'snowball-next':'')+'"><td><span class="rank-num">'+rank+'</span>'+(isNext?'<span class="snowball-tag">NEXT</span>':'')+
-        '</td><td><div class="debt-name">'+d.name+'</div><div class="debt-sub">'+d.creditor+'</div><div class="prog-track"><div class="prog-fill" style="width:'+(d.settled?100:0)+'%"></div></div></td>'+
-        '<td style="font-size:12px;color:var(--text2);">'+d.agency+'</td><td style="font-weight:600;">'+fmt(d.balance)+'</td>'+
-        '<td><input class="inline-input" placeholder="e.g. $86" value="'+d.settlement+'" oninput="updateField('+i+','settlement',this.value)"></td>'+
-        '<td><input class="inline-input" placeholder="e.g. $50/mo" value="'+d.plan+'" oninput="updateField('+i+','plan',this.value)"></td>'+
-        '<td><span class="badge '+priClass+'">'+d.priority+'</span></td>'+
-        '<td><span class="badge '+(d.call?'badge-green':'badge-gray')+'">'+(d.call?'Yes':'No')+'</span></td>'+
-        '<td><input class="inline-input inline-date" type="date" value="'+d.nextAction+'" oninput="updateField('+i+','nextAction',this.value)"></td>'+
-        '<td><div class="actions"><button class="act-btn green" onclick="markContacted('+i+')">Contacted</button><button class="act-btn red" onclick="markSettled('+i+')">'+(d.settled?'Undo':'Settled ✓')+'</button></div></td></tr>';
-    }).join('');
-  }
-
-  function updateField(i,f,v){ debts[i][f]=v; }
-
-  function markContacted(i) {
-    alert('✓ ' + debts[i].name + ' marked as contacted today.');
-  }
-
-  function markSettled(i) {
-    var newVal = !debts[i].settled;
-    db.from('debts').update({ settled: newVal }).eq('id', debts[i].id).then(function(res) {
-      if (res.error) { alert('Error: ' + res.error.message); return; }
-      setTimeout(function() { loadDebts(); }, 300);
+      renderSummary();
+      renderTable();
     });
-  }
+}
 
-  function setFilter(f, btn) {
-    currentFilter = f;
-    document.querySelectorAll('.filter-btn').forEach(function(b){ b.classList.remove('active'); });
-    btn.classList.add('active');
-    renderTable();
-  }
+function renderSummary() {
+  var total = debts.reduce(function(s,d){ return s+d.balance; }, 0);
+  var excl  = debts.filter(function(d){ return !d.name.toLowerCase().includes('car'); }).reduce(function(s,d){ return s+d.balance; }, 0);
+  var calls = debts.filter(function(d){ return d.call && !d.settled; }).length;
+  var next  = debts.filter(function(d){ return !d.settled; })[0];
+  document.getElementById('summary-cards').innerHTML =
+    '<div class="card"><div class="card-title">Total debt</div><div class="card-value red">' + fmt(total) + '</div><div class="card-sub">' + debts.length + ' accounts</div></div>' +
+    '<div class="card"><div class="card-title">Excl. car loan</div><div class="card-value amber">' + fmt(excl) + '</div><div class="card-sub">Collection accounts</div></div>' +
+    '<div class="card"><div class="card-title">Need to call</div><div class="card-value amber">' + calls + '</div><div class="card-sub">Active accounts</div></div>';
+  document.getElementById('snowball-tip').innerHTML = next
+    ? '<strong>Snowball target:</strong> Focus every extra dollar on <strong>' + next.name + ' (' + fmt(next.balance) + ')</strong> — smallest active balance. Pay this first, then roll that payment into the next one.'
+    : (debts.length ? 'All debts settled — incredible work! ♟️' : 'Add your debts above to see your snowball target.');
+}
 
-  function filterDebts(val) { searchTerm = val.toLowerCase(); renderTable(); }
+function renderTable() {
+  var list = debts.slice();
+  if (currentFilter === 'high')    list = list.filter(function(d){ return d.priority==='High'; });
+  if (currentFilter === 'call')    list = list.filter(function(d){ return d.call && !d.settled; });
+  if (currentFilter === 'settled') list = list.filter(function(d){ return d.settled; });
+  if (currentFilter === 'all')     list = list.filter(function(d){ return !d.settled; });
+  if (searchTerm) list = list.filter(function(d){ return d.name.toLowerCase().includes(searchTerm)||d.creditor.toLowerCase().includes(searchTerm)||d.agency.toLowerCase().includes(searchTerm); });
 
-  function addDebt() {
-    var name=document.getElementById('add-name').value.trim(), creditor=document.getElementById('add-creditor').value.trim();
-    var agency=document.getElementById('add-agency').value.trim()||'Unknown', balance=parseFloat(document.getElementById('add-balance').value)||0;
-    var priority=document.getElementById('add-priority').value, call=document.getElementById('add-call').value==='true';
-    if (!name||!balance) { alert('Please enter at least a name and balance.'); return; }
-    db.from('debts').insert({ user_id:currentUser.id, name:name, agency:agency, creditor:creditor, balance:balance, priority:priority, call:call, settled:false })
-      .then(function(res) {
-        if (res.error) { alert('Error: '+res.error.message); return; }
-        document.getElementById('add-name').value=''; document.getElementById('add-creditor').value='';
-        document.getElementById('add-agency').value=''; document.getElementById('add-balance').value='';
-        loadDebts();
-      });
-  }
+  var tbody = document.getElementById('debt-tbody');
+  if (!debts.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text3);">No debts yet — add your first account above.</td></tr>'; return; }
+  if (!list.length)  { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text3);">No debts match this filter.</td></tr>'; return; }
+
+  var active = debts.filter(function(d){ return !d.settled; });
+  var firstActiveId = active.length ? active[0].id : null;
+
+  tbody.innerHTML = list.map(function(d, i) {
+    var rank    = debts.indexOf(d) + 1;
+    var isNext  = d.id === firstActiveId;
+    var priClass = d.priority==='High'?'badge-red':d.priority==='Medium'?'badge-amber':'badge-gray';
+    return '<tr class="' + (d.settled?'settled-row':isNext?'snowball-next':'') + '">' +
+      '<td><span class="rank-num">' + rank + '</span>' + (isNext?'<span class="snowball-tag">NEXT</span>':'') + '</td>' +
+      '<td><div class="debt-name">' + d.name + '</div><div class="debt-sub">' + d.creditor + '</div></td>' +
+      '<td style="font-size:12px;color:var(--text2);">' + d.agency + '</td>' +
+      '<td style="font-weight:600;">' + fmt(d.balance) + ' <button class="edit-btn" style="padding:2px 6px;font-size:10px;border:1px solid var(--border);border-radius:4px;background:var(--bg);cursor:pointer;color:var(--text2);" onclick="editBalance(\'' + d.id + '\',' + d.balance + ')">✎</button></td>' +
+      '<td><input class="inline-input" placeholder="e.g. $86" value="' + d.settlement + '" onchange="saveField(\'' + d.id + '\',\'our_offer\',this.value)"></td>' +
+      '<td><input class="inline-input" placeholder="Notes" value="' + d.notes + '" onchange="saveField(\'' + d.id + '\',\'notes\',this.value)"></td>' +
+      '<td><span class="badge ' + priClass + '">' + d.priority + '</span></td>' +
+      '<td><span class="badge ' + (d.call?'badge-green':'badge-gray') + '">' + (d.call?'Yes':'No') + '</span></td>' +
+      '<td><div style="display:flex;gap:4px;">' +
+        '<button class="act-btn green" onclick="markContacted(\'' + d.id + '\')">Contacted</button>' +
+        '<button class="act-btn red" onclick="toggleSettled(\'' + d.id + '\',' + d.settled + ')">' + (d.settled?'Undo':'Settled ✓') + '</button>' +
+      '</div></td>' +
+    '</tr>';
+  }).join('');
+}
+
+function editBalance(id, current) {
+  var val = prompt('Update balance for this debt:', current);
+  if (val === null) return;
+  var amount = parseFloat(val);
+  if (isNaN(amount) || amount < 0) { alert('Please enter a valid amount.'); return; }
+  db.from('debts').update({ balance: amount }).eq('id', id).then(function(res) {
+    if (res.error) { alert('Error: ' + res.error.message); return; }
+    setTimeout(loadDebts, 300);
+  });
+}
+
+function saveField(id, field, value) {
+  var update = {};
+  update[field] = value;
+  db.from('debts').update(update).eq('id', id).then(function(res) {
+    if (res.error) alert('Error saving: ' + res.error.message);
+  });
+}
+
+function toggleSettled(id, current) {
+  db.from('debts').update({ settled: !current }).eq('id', id).then(function(res) {
+    if (res.error) { alert('Error: ' + res.error.message); return; }
+    setTimeout(loadDebts, 300);
+  });
+}
+
+function deleteDebt(id) {
+  if (!confirm('Permanently delete this debt?')) return;
+  db.from('debts').delete().eq('id', id).then(function(res) {
+    if (res.error) { alert('Error: ' + res.error.message); return; }
+    setTimeout(loadDebts, 300);
+  });
+}
+
+function markContacted(id) {
+  var today = new Date().toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+  alert('Marked as contacted ' + today + '. Update any notes in the Notes field.');
+}
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  renderTable();
+}
+
+function filterSearch(val) { searchTerm = val.toLowerCase(); renderTable(); }
+
+function addDebt() {
+  var name     = document.getElementById('add-name').value.trim();
+  var creditor = document.getElementById('add-creditor').value.trim();
+  var agency   = document.getElementById('add-agency').value.trim() || 'Unknown';
+  var balance  = parseFloat(document.getElementById('add-balance').value) || 0;
+  var priority = document.getElementById('add-priority').value;
+  var call     = document.getElementById('add-call').value === 'true';
+  var msg      = document.getElementById('debt-msg');
+  if (!name || !balance) { msg.style.display='block'; msg.style.color='var(--red)'; msg.textContent='Please enter at least a name and balance.'; return; }
+  db.from('debts').insert({ user_id:currentUser.id, name:name, agency:agency, creditor:creditor, balance:balance, priority:priority, call:call, settled:false }).select()
+    .then(function(res) {
+      if (res.error) { msg.style.display='block'; msg.style.color='var(--red)'; msg.textContent='Error: ' + res.error.message; return; }
+      document.getElementById('add-name').value     = '';
+      document.getElementById('add-creditor').value = '';
+      document.getElementById('add-agency').value   = '';
+      document.getElementById('add-balance').value  = '';
+      msg.style.display = 'none';
+      setTimeout(loadDebts, 300);
+    });
+}
 </script>
-
 </body>
 </html>

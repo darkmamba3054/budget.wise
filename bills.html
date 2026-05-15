@@ -8,125 +8,76 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="supabase.js"></script>
   <script src="auth-guard.js"></script>
-  
   <style>
-    .add-form { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 24px; }
-    .add-form h2 { font-family: 'DM Serif Display', serif; font-size: 18px; margin-bottom: 16px; }
-    .edit-row td { background: var(--green-l) !important; padding: 10px 8px !important; }
+    .edit-row td { background: var(--green-l) !important; }
     .edit-row input, .edit-row select { padding: 5px 8px; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); font-family: 'DM Sans', sans-serif; color: var(--text); width: 100%; outline: none; }
-    .edit-row input:focus, .edit-row select:focus { border-color: var(--green); }
+    #split-days-group { display: none; }
   </style>
 </head>
 <body>
-
 <script src="nav.js"></script>
-
 <div class="page">
   <div class="page-header">
-    <h1>Bills & Subscriptions</h1>
-    <p>Everything that hits your account on a regular basis.</p>
+    <h1>Bills &amp; Subscriptions</h1>
+    <p>Track your recurring bills and manage what you owe each month.</p>
   </div>
 
-  <!-- Summary -->
-  <div class="grid-2" style="margin-bottom:24px;">
-    <div class="card">
-      <div class="card-title">Monthly total</div>
-      <div class="card-value red" id="monthly-total">$0</div>
-      <div class="card-sub">Fixed bills only</div>
-    </div>
-    <div class="card">
-      <div class="card-title">Floating / estimated</div>
-      <div class="card-value amber" id="floating-total">$0</div>
-      <div class="card-sub">No fixed due date</div>
-    </div>
+  <div class="grid-3" style="margin-bottom:20px;">
+    <div class="card"><div class="card-title">Fixed bills total</div><div class="card-value red" id="monthly-total">$0.00</div><div class="card-sub">Bills with a due date</div></div>
+    <div class="card"><div class="card-title">Floating total</div><div class="card-value amber" id="floating-total">$0.00</div><div class="card-sub">No fixed due date</div></div>
+    <div class="card"><div class="card-title">Total monthly</div><div class="card-value" id="grand-total">$0.00</div><div class="card-sub">All bills combined</div></div>
   </div>
 
-  <!-- Add bill form -->
-  <div class="add-form">
-    <h2>Add a bill</h2>
+  <div class="card" style="margin-bottom:24px;">
+    <div class="section-header" style="margin-bottom:16px;"><h2>Add a bill</h2></div>
     <div class="form-row">
-      <div class="form-group">
-        <label>Bill name</label>
-        <input type="text" id="bill-name" placeholder="e.g. Netflix">
-      </div>
-      <div class="form-group">
-        <label>Amount ($)</label>
-        <input type="number" id="bill-amount" placeholder="0.00" min="0" step="0.01">
-      </div>
+      <div class="form-group"><label>Bill name</label><input type="text" id="bill-name" placeholder="e.g. Netflix"></div>
+      <div class="form-group"><label>Amount ($)</label><input type="number" id="bill-amount" placeholder="0.00" min="0" step="0.01"></div>
     </div>
     <div class="form-row">
-      <div class="form-group">
-        <label>Due date (day of month)</label>
-        <input type="number" id="bill-due" placeholder="Leave blank if no fixed date" min="1" max="31">
-      </div>
-      <div class="form-group">
-        <label>Category</label>
+      <div class="form-group"><label>Due date (day of month)</label><input type="number" id="bill-due" placeholder="Leave blank if floating" min="1" max="31"></div>
+      <div class="form-group"><label>Category</label>
         <select id="bill-cat">
-          <option>Housing</option>
-          <option>Utilities</option>
-          <option>Insurance</option>
-          <option>Transportation</option>
-          <option>Food</option>
-          <option>Giving</option>
-          <option>Other</option>
+          <option>Housing</option><option>Utilities</option><option>Insurance</option>
+          <option>Transportation</option><option>Food</option><option>Giving</option><option>Other</option>
         </select>
       </div>
     </div>
     <div class="form-row">
-      <div class="form-group">
-        <label>Auto pay?</label>
-        <select id="bill-auto">
-          <option value="No">No</option>
-          <option value="Yes">Yes</option>
-        </select>
+      <div class="form-group"><label>Auto pay?</label>
+        <select id="bill-auto"><option value="No">No</option><option value="Yes">Yes</option></select>
       </div>
-      <div class="form-group">
-        <label>Frequency</label>
-        <select id="bill-freq">
-          <option>Monthly</option>
-          <option>Weekly</option>
-          <option>Yearly</option>
-        </select>
+      <div class="form-group"><label>Frequency</label>
+        <select id="bill-freq"><option>Monthly</option><option>Weekly</option><option>Yearly</option></select>
       </div>
     </div>
     <div class="form-row">
-      <div class="form-group">
-        <label>Split across paychecks?</label>
-        <select id="bill-split" onchange="toggleSplitFields()">
+      <div class="form-group"><label>Split across paychecks?</label>
+        <select id="bill-split" onchange="toggleSplit()">
           <option value="No">No — pay all at once</option>
           <option value="Yes">Yes — split across 2 paychecks</option>
         </select>
       </div>
-      <div class="form-group" id="split-days-group" style="display:none;">
-        <label>Split: paycheck 1 on day</label>
-        <div style="display:flex; gap:8px; align-items:center;">
-          <input type="number" id="bill-split-p1" placeholder="e.g. 6" min="1" max="31" style="width:80px;">
-          <span style="color:var(--text2); font-size:13px;">and paycheck 2 on day</span>
-          <input type="number" id="bill-split-p2" placeholder="e.g. 21" min="1" max="31" style="width:80px;">
+      <div class="form-group" id="split-days-group"><label>Split days (e.g. 6 and 21)</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="number" id="bill-split-p1" placeholder="Day 1" min="1" max="31" style="width:80px;">
+          <span style="color:var(--text2);font-size:13px;">and</span>
+          <input type="number" id="bill-split-p2" placeholder="Day 2" min="1" max="31" style="width:80px;">
         </div>
       </div>
     </div>
     <button class="btn btn-primary" onclick="addBill()">Add bill</button>
+    <div id="bill-msg" style="font-size:13px;margin-top:8px;display:none;"></div>
   </div>
 
-  <!-- Bills table -->
-  <div class="section-header">
-    <h2>Your bills</h2>
-  </div>
-  <div class="card" style="padding:0; overflow:hidden;">
+  <div class="section-header"><h2>Your bills</h2></div>
+  <div class="card" style="padding:0;overflow:hidden;">
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Bill name</th>
-            <th>Amount</th>
-            <th>Due date</th>
-            <th>Split</th>
-            <th>Auto pay</th>
-            <th>Frequency</th>
-            <th>Category</th>
-            <th>Status</th>
-            <th></th>
+            <th>Bill name</th><th>Amount</th><th>Due date</th><th>Split</th>
+            <th>Auto pay</th><th>Frequency</th><th>Category</th><th>Status</th><th></th>
           </tr>
         </thead>
         <tbody id="bills-tbody"></tbody>
@@ -136,162 +87,147 @@
 </div>
 
 <script>
-  var db          = (window.supabase || window.supabasejs).createClient(SUPABASE_URL, SUPABASE_KEY);
-  var currentUser = null;
-  var bills       = [];
-  var editingIndex = null;
+var db = (window.supabase || window.supabasejs).createClient(SUPABASE_URL, SUPABASE_KEY);
+var currentUser = null;
+var bills = [];
+var editingId = null;
 
-  document.addEventListener('DOMContentLoaded', function() {
-    db.auth.getSession().then(function(res) {
-      if (!res.data || !res.data.session) { window.location.replace('login.html'); return; }
-      currentUser = res.data.session.user;
-      loadBills();
-    });
+document.addEventListener('DOMContentLoaded', function() {
+  db.auth.getSession().then(function(res) {
+    if (!res.data || !res.data.session) { window.location.replace('login.html'); return; }
+    currentUser = res.data.session.user;
+    loadBills();
   });
+});
 
-  function toggleSplitFields() {
-    var val = document.getElementById('bill-split').value;
-    document.getElementById('split-days-group').style.display = val === 'Yes' ? '' : 'none';
-  }
+function toggleSplit() {
+  document.getElementById('split-days-group').style.display = document.getElementById('bill-split').value === 'Yes' ? '' : 'none';
+}
 
-  function loadBills() {
-    db.from('bills').select('*').eq('user_id', currentUser.id).order('due_day', { ascending: true, nullsFirst: false })
-      .then(function(res) {
-        bills = (res.data || []).map(function(b) {
-          return {
-            id:       b.id,
-            name:     b.name,
-            amount:   parseFloat(b.amount),
-            day:      b.due_day || null,
-            auto:     b.auto_pay || 'No',
-            freq:     b.frequency || 'Monthly',
-            category: b.category || 'Other',
-            paid:     b.paid || false,
-            split:    b.split || false,
-            splitP1:  b.split_p1 || null,
-            splitP2:  b.split_p2 || null,
-          };
-        });
-        renderSummary();
-        renderTable();
+function fmt(n) { return '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function ordinal(d) { if (!d) return '—'; return d + (d===1?'st':d===2?'nd':d===3?'rd':'th'); }
+
+function loadBills() {
+  db.from('bills').select('*').eq('user_id', currentUser.id).order('due_day', {ascending:true, nullsFirst:false})
+    .then(function(res) {
+      if (res.error) { console.error(res.error); return; }
+      bills = (res.data || []).map(function(b) {
+        return { id:b.id, name:b.name, amount:parseFloat(b.amount), day:b.due_day||null, auto:b.auto_pay||'No', freq:b.frequency||'Monthly', category:b.category||'Other', paid:b.paid||false, split:b.split||false, splitP1:b.split_p1||null, splitP2:b.split_p2||null };
       });
+      renderSummary();
+      renderTable();
+    });
+}
+
+function renderSummary() {
+  var fixed    = bills.filter(function(b){ return b.day; }).reduce(function(s,b){ return s+b.amount; }, 0);
+  var floating = bills.filter(function(b){ return !b.day; }).reduce(function(s,b){ return s+b.amount; }, 0);
+  document.getElementById('monthly-total').textContent  = fmt(fixed);
+  document.getElementById('floating-total').textContent = fmt(floating);
+  document.getElementById('grand-total').textContent    = fmt(fixed + floating);
+}
+
+function renderTable() {
+  var cats = ['Housing','Utilities','Insurance','Transportation','Food','Giving','Other'];
+  var tbody = document.getElementById('bills-tbody');
+  if (!bills.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text3);">No bills yet — add your first bill above.</td></tr>';
+    return;
   }
-
-  function fmt(n) { return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 }); }
-  function ordinal(d) { if (!d) return '—'; return d + (d===1?'st':d===2?'nd':d===3?'rd':'th'); }
-
-  function renderSummary() {
-    var fixed    = bills.filter(function(b){ return b.day;  }).reduce(function(s,b){ return s+b.amount; }, 0);
-    var floating = bills.filter(function(b){ return !b.day; }).reduce(function(s,b){ return s+b.amount; }, 0);
-    document.getElementById('monthly-total').textContent  = fmt(fixed);
-    document.getElementById('floating-total').textContent = fmt(floating);
-  }
-
-  function renderTable() {
-    var cats = ['Housing','Utilities','Insurance','Transportation','Food','Giving','Other'];
-    if (!bills.length) {
-      document.getElementById('bills-tbody').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3);">No bills yet — add your first bill above.</td></tr>';
-      return;
-    }
-    document.getElementById('bills-tbody').innerHTML = bills.map(function(b, i) {
-      var catClass = b.category==='Housing'?'badge-red':b.category==='Insurance'?'badge-amber':b.category==='Giving'?'badge-green':'badge-gray';
-      var dueStr   = b.day ? ordinal(b.day) : '<span style="color:var(--text3);">Floating</span>';
-
-      if (editingIndex === i) {
-        return '<tr class="edit-row">' +
-          '<td><input type="text" id="edit-name" value="' + b.name + '"></td>' +
-          '<td><input type="number" id="edit-amount" value="' + b.amount + '" min="0" step="0.01" style="width:80px;"></td>' +
-          '<td><input type="number" id="edit-day" value="' + (b.day||'') + '" placeholder="blank=floating" min="1" max="31" style="width:80px;"></td>' +
-          '<td><select id="edit-auto"><option' + (b.auto==='No'?' selected':'') + '>No</option><option' + (b.auto==='Yes'?' selected':'') + '>Yes</option></select></td>' +
-          '<td><select id="edit-freq"><option' + (b.freq==='Monthly'?' selected':'') + '>Monthly</option><option' + (b.freq==='Weekly'?' selected':'') + '>Weekly</option><option' + (b.freq==='Yearly'?' selected':'') + '>Yearly</option></select></td>' +
-          '<td><select id="edit-cat">' + cats.map(function(c){ return '<option' + (b.category===c?' selected':'') + '>' + c + '</option>'; }).join('') + '</select></td>' +
-          '<td><span class="badge ' + (b.paid?'badge-green':'badge-amber') + '">' + (b.paid?'Paid':'Unpaid') + '</span></td>' +
-          '<td style="display:flex;gap:6px;">' +
-            '<button class="btn btn-primary btn-sm" onclick="saveEdit(' + i + ')">Save</button>' +
-            '<button class="btn btn-sm" style="background:var(--bg2);color:var(--text2);border:none;" onclick="cancelEdit()">Cancel</button>' +
-          '</td>' +
-        '</tr>';
-      }
-
-      return '<tr style="' + (b.paid?'opacity:0.5;':'') + '">' +
-        '<td style="font-weight:500;">' + b.name + '</td>' +
-        '<td style="font-weight:600;">' + fmt(b.amount) + '</td>' +
-        '<td>' + dueStr + '</td>' +
-        '<td>' + (b.split ? '<span class="badge badge-amber">Split: ' + (b.splitP1||'?') + 'th / ' + (b.splitP2||'?') + 'th</span>' : '<span style="color:var(--text3);">No</span>') + '</td>' +
-        '<td><span class="badge ' + (b.auto==='Yes'?'badge-green':'badge-gray') + '">' + b.auto + '</span></td>' +
-        '<td style="color:var(--text2);">' + b.freq + '</td>' +
-        '<td><span class="badge ' + catClass + '">' + b.category + '</span></td>' +
+  tbody.innerHTML = bills.map(function(b) {
+    var catClass = b.category==='Housing'?'badge-red':b.category==='Insurance'?'badge-amber':b.category==='Giving'?'badge-green':'badge-gray';
+    if (editingId === b.id) {
+      return '<tr class="edit-row">' +
+        '<td><input type="text" id="e-name" value="' + b.name + '"></td>' +
+        '<td><input type="number" id="e-amount" value="' + b.amount + '" style="width:80px;"></td>' +
+        '<td><input type="number" id="e-day" value="' + (b.day||'') + '" placeholder="blank=floating" style="width:70px;"></td>' +
+        '<td><span style="font-size:12px;color:var(--text2);">' + (b.split ? (b.splitP1||'?') + '/' + (b.splitP2||'?') : 'No') + '</span></td>' +
+        '<td><select id="e-auto"><option' + (b.auto==='No'?' selected':'') + '>No</option><option' + (b.auto==='Yes'?' selected':'') + '>Yes</option></select></td>' +
+        '<td><select id="e-freq"><option' + (b.freq==='Monthly'?' selected':'') + '>Monthly</option><option' + (b.freq==='Weekly'?' selected':'') + '>Weekly</option><option' + (b.freq==='Yearly'?' selected':'') + '>Yearly</option></select></td>' +
+        '<td><select id="e-cat">' + cats.map(function(c){ return '<option' + (b.category===c?' selected':'') + '>' + c + '</option>'; }).join('') + '</select></td>' +
         '<td><span class="badge ' + (b.paid?'badge-green':'badge-amber') + '">' + (b.paid?'Paid':'Unpaid') + '</span></td>' +
-        '<td style="display:flex;gap:6px;flex-wrap:wrap;">' +
-          '<button class="btn btn-outline btn-sm" onclick="startEdit(' + i + ')">Edit</button>' +
-          '<button class="btn btn-outline btn-sm" onclick="togglePaid(' + i + ')">' + (b.paid?'Unmark':'Mark paid') + '</button>' +
-          '<button class="btn btn-sm" style="background:var(--red-l);color:var(--red);border:none;" onclick="removeBill(' + i + ')">Remove</button>' +
+        '<td style="display:flex;gap:4px;">' +
+          '<button class="btn btn-primary btn-sm" onclick="saveEdit(\'' + b.id + '\')">Save</button>' +
+          '<button class="btn btn-sm" style="background:var(--bg2);color:var(--text2);border:none;" onclick="cancelEdit()">Cancel</button>' +
         '</td>' +
       '</tr>';
-    }).join('');
-  }
+    }
+    return '<tr style="' + (b.paid?'opacity:0.5;':'') + '">' +
+      '<td style="font-weight:500;">' + b.name + '</td>' +
+      '<td style="font-weight:600;">' + fmt(b.amount) + '</td>' +
+      '<td>' + ordinal(b.day) + '</td>' +
+      '<td>' + (b.split ? '<span class="badge badge-amber">Split: ' + (b.splitP1||'?') + '/' + (b.splitP2||'?') + '</span>' : '<span style="color:var(--text3);">No</span>') + '</td>' +
+      '<td><span class="badge ' + (b.auto==='Yes'?'badge-green':'badge-gray') + '">' + b.auto + '</span></td>' +
+      '<td style="color:var(--text2);">' + b.freq + '</td>' +
+      '<td><span class="badge ' + catClass + '">' + b.category + '</span></td>' +
+      '<td><span class="badge ' + (b.paid?'badge-green':'badge-amber') + '">' + (b.paid?'Paid':'Unpaid') + '</span></td>' +
+      '<td style="display:flex;gap:4px;flex-wrap:wrap;">' +
+        '<button class="btn btn-outline btn-sm" onclick="startEdit(\'' + b.id + '\')">Edit</button>' +
+        '<button class="btn btn-outline btn-sm" onclick="togglePaid(\'' + b.id + '\',' + b.paid + ')">' + (b.paid?'Unmark':'Mark paid') + '</button>' +
+        '<button class="btn btn-sm" style="background:var(--red-l);color:var(--red);border:none;" onclick="removeBill(\'' + b.id + '\')">Remove</button>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+}
 
-  function startEdit(i)  { editingIndex = i; renderTable(); }
-  function cancelEdit()  { editingIndex = null; renderTable(); }
+function startEdit(id) { editingId = id; renderTable(); }
+function cancelEdit()  { editingId = null; renderTable(); }
 
-  function saveEdit(i) {
-    var name   = document.getElementById('edit-name').value.trim();
-    var amount = parseFloat(document.getElementById('edit-amount').value);
-    var day    = parseInt(document.getElementById('edit-day').value) || null;
-    var auto   = document.getElementById('edit-auto').value;
-    var freq   = document.getElementById('edit-freq').value;
-    var cat    = document.getElementById('edit-cat').value;
-    if (!name || !amount) { alert('Name and amount are required.'); return; }
-    var bill = bills[i];
-    db.from('bills').update({ name:name, amount:amount, due_day:day, auto_pay:auto, frequency:freq, category:cat }).eq('id', bill.id)
-      .then(function(res) {
-        if (res.error) { alert('Error saving: ' + res.error.message); return; }
-        editingIndex = null;
-        setTimeout(function() { loadBills(); }, 300);
-      });
-  }
-
-  function togglePaid(i) {
-    var bill   = bills[i];
-    var newVal = !bill.paid;
-    db.from('bills').update({ paid: newVal }).eq('id', bill.id).then(function(res) {
-      if (res.error) { alert('Error updating: ' + res.error.message); return; }
-      setTimeout(function() { loadBills(); }, 300);
+function saveEdit(id) {
+  var name   = document.getElementById('e-name').value.trim();
+  var amount = parseFloat(document.getElementById('e-amount').value);
+  var day    = parseInt(document.getElementById('e-day').value) || null;
+  var auto   = document.getElementById('e-auto').value;
+  var freq   = document.getElementById('e-freq').value;
+  var cat    = document.getElementById('e-cat').value;
+  if (!name || !amount) { alert('Name and amount are required.'); return; }
+  db.from('bills').update({ name:name, amount:amount, due_day:day, auto_pay:auto, frequency:freq, category:cat }).eq('id', id)
+    .then(function(res) {
+      if (res.error) { alert('Error: ' + res.error.message); return; }
+      editingId = null;
+      setTimeout(loadBills, 300);
     });
-  }
+}
 
-  function removeBill(i) {
-    var bill = bills[i];
-    if (!confirm('Remove ' + bill.name + '?')) return;
-    db.from('bills').delete().eq('id', bill.id).then(function(res) {
-      if (res.error) { alert('Error removing: ' + res.error.message); return; }
-      setTimeout(function() { loadBills(); }, 300);
+function togglePaid(id, current) {
+  db.from('bills').update({ paid: !current }).eq('id', id).then(function(res) {
+    if (res.error) { alert('Error: ' + res.error.message); return; }
+    setTimeout(loadBills, 300);
+  });
+}
+
+function removeBill(id) {
+  if (!confirm('Remove this bill?')) return;
+  db.from('bills').delete().eq('id', id).then(function(res) {
+    if (res.error) { alert('Error: ' + res.error.message); return; }
+    setTimeout(loadBills, 300);
+  });
+}
+
+function addBill() {
+  var name    = document.getElementById('bill-name').value.trim();
+  var amount  = parseFloat(document.getElementById('bill-amount').value);
+  var due     = parseInt(document.getElementById('bill-due').value) || null;
+  var auto    = document.getElementById('bill-auto').value;
+  var freq    = document.getElementById('bill-freq').value;
+  var cat     = document.getElementById('bill-cat').value;
+  var split   = document.getElementById('bill-split').value === 'Yes';
+  var splitP1 = split ? (parseInt(document.getElementById('bill-split-p1').value) || null) : null;
+  var splitP2 = split ? (parseInt(document.getElementById('bill-split-p2').value) || null) : null;
+  var msg     = document.getElementById('bill-msg');
+  if (!name || !amount) { msg.style.display='block'; msg.style.color='var(--red)'; msg.textContent='Please enter a name and amount.'; return; }
+  db.from('bills').insert({ user_id:currentUser.id, name:name, amount:amount, due_day:due, auto_pay:auto, frequency:freq, category:cat, paid:false, split:split, split_p1:splitP1, split_p2:splitP2 }).select()
+    .then(function(res) {
+      if (res.error) { msg.style.display='block'; msg.style.color='var(--red)'; msg.textContent='Error: ' + res.error.message; return; }
+      document.getElementById('bill-name').value  = '';
+      document.getElementById('bill-amount').value = '';
+      document.getElementById('bill-due').value   = '';
+      document.getElementById('bill-split').value = 'No';
+      document.getElementById('split-days-group').style.display = 'none';
+      msg.style.display = 'none';
+      setTimeout(loadBills, 300);
     });
-  }
-
-  function addBill() {
-    var name   = document.getElementById('bill-name').value.trim();
-    var amount = parseFloat(document.getElementById('bill-amount').value);
-    var due    = parseInt(document.getElementById('bill-due').value) || null;
-    var auto   = document.getElementById('bill-auto').value;
-    var freq   = document.getElementById('bill-freq').value;
-    var cat    = document.getElementById('bill-cat').value;
-    var split  = document.getElementById('bill-split').value === 'Yes';
-    var splitP1 = split ? (parseInt(document.getElementById('bill-split-p1').value) || null) : null;
-    var splitP2 = split ? (parseInt(document.getElementById('bill-split-p2').value) || null) : null;
-    if (!name || !amount) { alert('Please enter a name and amount.'); return; }
-    db.from('bills').insert({ user_id:currentUser.id, name:name, amount:amount, due_day:due, auto_pay:auto, frequency:freq, category:cat, paid:false, split:split, split_p1:splitP1, split_p2:splitP2 }).select()
-      .then(function(res) {
-        if (res.error) { alert('Error adding bill: ' + res.error.message); return; }
-        document.getElementById('bill-name').value   = '';
-        document.getElementById('bill-amount').value = '';
-        document.getElementById('bill-due').value    = '';
-        document.getElementById('bill-split').value  = 'No';
-        document.getElementById('split-days-group').style.display = 'none';
-        setTimeout(function() { loadBills(); }, 300);
-      });
-  }
+}
 </script>
-
 </body>
 </html>

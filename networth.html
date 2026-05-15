@@ -8,7 +8,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="supabase.js"></script>
   <script src="auth-guard.js"></script>
-  
   <style>
     .nw-hero { background: var(--green); border-radius: var(--radius); padding: 28px; color: white; margin-bottom: 20px; text-align: center; }
     .nw-label { font-size: 12px; font-weight: 600; opacity: 0.75; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
@@ -24,25 +23,19 @@
     .cat-label { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.07em; padding: 7px 16px 5px; background: var(--bg2); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; }
     .item-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 16px; border-bottom: 1px solid var(--bg2); font-size: 14px; }
     .item-row:last-of-type { border-bottom: none; }
-    .item-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
     .add-row { display: grid; grid-template-columns: 1fr 100px 32px; gap: 6px; padding: 10px 16px; border-top: 1px solid var(--border); background: var(--bg); align-items: center; }
-    .add-row input { padding: 6px 10px; font-size: 13px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--card); color: var(--text); font-family: 'DM Sans', sans-serif; width: 100%; outline: none; }
-    .add-row input:focus { border-color: var(--green); }
+    .add-row input, .add-row select { padding: 6px 10px; font-size: 13px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--card); color: var(--text); font-family: 'DM Sans', sans-serif; width: 100%; outline: none; }
     .add-circle { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border); background: var(--card); color: var(--text2); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: inherit; }
     .add-circle:hover { background: var(--green-l); color: var(--green); border-color: var(--green-m); }
-    .del-btn { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 16px; opacity: 0.5; padding: 0; }
+    .del-btn { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 16px; opacity: 0.5; padding: 2px 6px; }
     .del-btn:hover { opacity: 1; color: var(--red); }
-    .trend-row { display: grid; grid-template-columns: 90px 1fr 110px 110px; gap: 8px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--bg2); font-size: 13px; }
-    .trend-row:last-child { border-bottom: none; }
-    .trend-head { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; background: var(--bg); }
-    .bar-track { height: 6px; background: var(--bg2); border-radius: 99px; overflow: hidden; }
-    .bar-fill-pos { height: 100%; border-radius: 99px; background: var(--green); }
-    .bar-fill-neg { height: 100%; border-radius: 99px; background: var(--red); }
+    .edit-btn { padding: 3px 10px; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); cursor: pointer; font-family: 'DM Sans', sans-serif; color: var(--text2); }
+    .edit-btn:hover { border-color: var(--green); color: var(--green); }
+    .edit-form { background: var(--green-l); border-radius: var(--radius-sm); padding: 12px 16px; margin: 0 8px 8px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .edit-form input, .edit-form select { padding: 6px 10px; font-size: 13px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); color: var(--text); font-family: 'DM Sans', sans-serif; outline: none; }
+    .edit-form-red { background: var(--red-l); }
     .cat-radio { display: flex; gap: 10px; padding: 8px 16px; border-top: 1px solid var(--border); background: var(--bg); flex-wrap: wrap; }
     .cat-radio label { display: flex; align-items: center; gap: 5px; font-size: 12px; cursor: pointer; }
-    .cb-liquid   { background: #e8f3fd; color: #1a5fa8; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 500; }
-    .cb-retire   { background: var(--green-l); color: var(--green); padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 500; }
-    .cb-physical { background: var(--amber-l); color: var(--amber); padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 500; }
   </style>
 </head>
 <body>
@@ -50,13 +43,13 @@
 <div class="page">
   <div class="page-header">
     <h1>Net Worth</h1>
-    <p>Assets minus liabilities — watch this number climb as you pay down debt.</p>
+    <p>Assets minus liabilities — watch this number grow as you pay down debt.</p>
   </div>
 
   <div class="nw-hero">
     <div class="nw-label">Your net worth</div>
     <div class="nw-val" id="nw-val">$0</div>
-    <div class="nw-sub" id="nw-sub">Assets minus liabilities</div>
+    <div class="nw-sub" id="nw-sub">Loading...</div>
     <div class="nw-pills">
       <div class="nw-pill"><div class="nw-pill-label">Liquid</div><div class="nw-pill-val" id="pill-liquid">$0</div></div>
       <div style="width:1px;background:rgba(255,255,255,0.2);"></div>
@@ -65,16 +58,14 @@
       <div class="nw-pill"><div class="nw-pill-label">Physical</div><div class="nw-pill-val" id="pill-physical">$0</div></div>
       <div style="width:1px;background:rgba(255,255,255,0.2);"></div>
       <div class="nw-pill"><div class="nw-pill-label">Total liabilities</div><div class="nw-pill-val" id="pill-liabilities">$0</div></div>
-      <div style="width:1px;background:rgba(255,255,255,0.2);"></div>
-      <div class="nw-pill"><div class="nw-pill-label">Debt-to-asset</div><div class="nw-pill-val" id="pill-dta">—</div></div>
     </div>
   </div>
 
   <div class="grid-2" style="margin-bottom:20px;">
     <div class="section-card">
       <div class="section-head">
-        <div style="font-weight:600; font-size:15px;">Assets</div>
-        <div style="font-weight:600; color:var(--green);" id="assets-total">$0</div>
+        <div style="font-weight:600;font-size:15px;">Assets</div>
+        <div style="font-weight:600;color:var(--green);" id="assets-total">$0</div>
       </div>
       <div id="assets-list"></div>
       <div class="add-row">
@@ -84,15 +75,15 @@
       </div>
       <div class="cat-radio">
         <span style="font-size:11px;color:var(--text3);margin-right:4px;">Category:</span>
-        <label><input type="radio" name="acat" value="liquid" checked> <span class="cb-liquid">Liquid</span></label>
-        <label><input type="radio" name="acat" value="retire"> <span class="cb-retire">Retirement</span></label>
-        <label><input type="radio" name="acat" value="physical"> <span class="cb-physical">Physical</span></label>
+        <label><input type="radio" name="acat" value="liquid" checked> Liquid</label>
+        <label><input type="radio" name="acat" value="retire"> Retirement</label>
+        <label><input type="radio" name="acat" value="physical"> Physical</label>
       </div>
     </div>
     <div class="section-card">
       <div class="section-head">
-        <div style="font-weight:600; font-size:15px;">Liabilities</div>
-        <div style="font-weight:600; color:var(--red);" id="liabilities-total">$0</div>
+        <div style="font-weight:600;font-size:15px;">Liabilities</div>
+        <div style="font-weight:600;color:var(--red);" id="liabilities-total">$0</div>
       </div>
       <div id="liabilities-list"></div>
       <div class="add-row">
@@ -102,209 +93,196 @@
       </div>
     </div>
   </div>
-
-  <div class="section-card">
-    <div class="section-head">
-      <div style="font-weight:600; font-size:15px;">Net worth over time</div>
-      <div style="font-size:12px; color:var(--text3);">Updated monthly</div>
-    </div>
-    <div class="trend-row trend-head">
-      <div>Month</div><div>Progress</div><div>Net worth</div><div>Change</div>
-    </div>
-    <div id="trend-list"></div>
-  </div>
 </div>
 
 <script>
-  var db          = (window.supabase || window.supabasejs).createClient(SUPABASE_URL, SUPABASE_KEY);
-  var currentUser = null;
-  var assets      = [];
-  var liabilities = [];
-  var editAsset   = null;
-  var editLiability = null;
-  var catLabels   = { liquid:'Liquid', retire:'Retirement', physical:'Physical' };
+var db = (window.supabase || window.supabasejs).createClient(SUPABASE_URL, SUPABASE_KEY);
+var currentUser = null;
+var assets = [];
+var liabilities = [];
+var editAssetId = null;
+var editLiabilityId = null;
+var catLabels = { liquid:'Liquid', retire:'Retirement', physical:'Physical' };
 
-  document.addEventListener('DOMContentLoaded', function() {
-    db.auth.getSession().then(function(res) {
-      if (!res.data || !res.data.session) { window.location.replace('login.html'); return; }
-      currentUser = res.data.session.user;
-      loadAll();
+document.addEventListener('DOMContentLoaded', function() {
+  db.auth.getSession().then(function(res) {
+    if (!res.data || !res.data.session) { window.location.replace('login.html'); return; }
+    currentUser = res.data.session.user;
+    loadAll();
+  });
+});
+
+function fmt(n) { return (n < 0 ? '-$' : '$') + Math.abs(Math.round(n)).toLocaleString(); }
+
+function loadAll() {
+  db.from('assets').select('*').eq('user_id', currentUser.id).order('created_at').then(function(r1) {
+    assets = (r1.data || []).map(function(a) {
+      return { id:a.id, name:a.name, amount:parseFloat(a.amount), cat:a.category||'liquid', sub:a.sub||'' };
+    });
+    db.from('liabilities').select('*').eq('user_id', currentUser.id).order('created_at').then(function(r2) {
+      liabilities = (r2.data || []).map(function(l) {
+        return { id:l.id, name:l.name, amount:parseFloat(l.amount), sub:l.sub||'' };
+      });
+      render();
     });
   });
+}
 
-  function loadAll() {
-    db.from('assets').select('*').eq('user_id', currentUser.id).then(function(res) {
-      assets = (res.data || []).map(function(a) {
-        return { id:a.id, name:a.name, amount:parseFloat(a.amount), cat:a.category||'liquid', sub:a.sub||'' };
-      });
-      db.from('liabilities').select('*').eq('user_id', currentUser.id).then(function(res2) {
-        liabilities = (res2.data || []).map(function(l) {
-          return { id:l.id, name:l.name, amount:parseFloat(l.amount), sub:l.sub||'' };
-        });
-        render();
-      });
-    });
-  }
+function render() {
+  var bycat = { liquid:0, retire:0, physical:0 };
+  assets.forEach(function(a) { bycat[a.cat] = (bycat[a.cat]||0) + a.amount; });
+  var ta = assets.reduce(function(s,a) { return s + a.amount; }, 0);
+  var tl = liabilities.reduce(function(s,l) { return s + l.amount; }, 0);
+  var nw = ta - tl;
 
-  function fmt(n) { return (n<0?'-$':'$') + Math.abs(Math.round(n)).toLocaleString(); }
+  document.getElementById('nw-val').textContent = fmt(nw);
+  document.getElementById('nw-val').className = 'nw-val' + (nw < 0 ? ' negative' : '');
+  document.getElementById('nw-sub').textContent = nw < 0 ? 'Liabilities exceed assets — each debt paid improves this' : 'Assets exceed liabilities — great work!';
+  document.getElementById('pill-liquid').textContent = fmt(bycat.liquid);
+  document.getElementById('pill-retire').textContent = fmt(bycat.retire);
+  document.getElementById('pill-physical').textContent = fmt(bycat.physical);
+  document.getElementById('pill-liabilities').textContent = fmt(tl);
+  document.getElementById('assets-total').textContent = fmt(ta);
+  document.getElementById('liabilities-total').textContent = fmt(tl);
 
-  function calc() {
-    var bycat = { liquid:0, retire:0, physical:0 };
-    assets.forEach(function(a){ bycat[a.cat] = (bycat[a.cat]||0) + a.amount; });
-    var ta = assets.reduce(function(s,a){ return s+a.amount; }, 0);
-    var tl = liabilities.reduce(function(s,l){ return s+l.amount; }, 0);
-    return { ta:ta, tl:tl, nw:ta-tl, liquid:bycat.liquid, retire:bycat.retire, physical:bycat.physical };
-  }
+  renderAssets();
+  renderLiabilities();
+}
 
-  function render() {
-    var c = calc();
-    document.getElementById('nw-val').textContent = fmt(c.nw);
-    document.getElementById('nw-val').className   = 'nw-val' + (c.nw < 0 ? ' negative' : '');
-    document.getElementById('nw-sub').textContent = c.nw < 0 ? 'Your liabilities exceed your assets — each debt paid improves this' : 'Your assets exceed your liabilities — great work!';
-    document.getElementById('pill-liquid').textContent      = fmt(c.liquid);
-    document.getElementById('pill-retire').textContent      = fmt(c.retire);
-    document.getElementById('pill-physical').textContent    = fmt(c.physical);
-    document.getElementById('pill-liabilities').textContent = fmt(c.tl);
-    document.getElementById('pill-dta').textContent         = c.ta > 0 ? Math.round((c.tl/c.ta)*100)+'%' : '—';
-    document.getElementById('assets-total').textContent     = fmt(c.ta);
-    document.getElementById('liabilities-total').textContent = fmt(c.tl);
-
-    var html = '';
-    if (!assets.length) {
-      html = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px;">No assets yet — add one below.</div>';
-    } else {
-      ['liquid','retire','physical'].forEach(function(cat) {
-        var items = assets.filter(function(a){ return a.cat === cat; });
-        if (!items.length) return;
-        var catTot = items.reduce(function(s,a){ return s+a.amount; }, 0);
-        html += '<div class="cat-label"><span>' + catLabels[cat] + '</span><span>' + fmt(catTot) + '</span></div>';
-        items.forEach(function(a) {
-          var i = assets.indexOf(a);
-          if (editAsset === i) {
-            html += '<div class="item-row" style="background:var(--green-l);flex-direction:column;align-items:stretch;gap:8px;">' +
-              '<div style="display:grid;grid-template-columns:1fr 100px;gap:8px;">' +
-                '<input id="ea-name" type="text" value="' + a.name + '" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">' +
-                '<input id="ea-amt" type="number" value="' + a.amount + '" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">' +
-              '</div>' +
-              '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
-                '<input id="ea-sub" type="text" value="' + a.sub + '" placeholder="Description (optional)" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">' +
-                '<select id="ea-cat" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">' +
-                  '<option value="liquid"' + (a.cat==='liquid'?' selected':'') + '>Liquid</option>' +
-                  '<option value="retire"' + (a.cat==='retire'?' selected':'') + '>Retirement</option>' +
-                  '<option value="physical"' + (a.cat==='physical'?' selected':'') + '>Physical</option>' +
-                '</select>' +
-              '</div>' +
-              '<div style="display:flex;gap:6px;">' +
-                '<button class="btn btn-primary btn-sm" onclick="saveAsset(' + i + ')">Save</button>' +
-                '<button class="btn btn-sm" style="background:var(--bg2);color:var(--text2);border:none;" onclick="cancelAssetEdit()">Cancel</button>' +
-              '</div>' +
-            '</div>';
-          } else {
-            html += '<div class="item-row"><div><div style="font-weight:500;">' + a.name + '</div><div class="item-sub">' + a.sub + '</div></div>' +
-              '<div style="display:flex;align-items:center;gap:6px;"><span style="font-weight:600;">' + fmt(a.amount) + '</span>' +
-              '<button class="btn btn-outline btn-sm" onclick="startAssetEdit(' + i + ')">Edit</button>' +
-              '<button class="del-btn" onclick="removeAsset(' + i + ')">×</button></div></div>';
-          }
-        });
-      });
-    }
-    document.getElementById('assets-list').innerHTML = html;
-
-    if (!liabilities.length) {
-      document.getElementById('liabilities-list').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px;">No liabilities yet — add one below.</div>';
-    } else {
-      document.getElementById('liabilities-list').innerHTML = liabilities.map(function(l, i) {
-        if (editLiability === i) {
-          return '<div class="item-row" style="background:var(--red-l);flex-direction:column;align-items:stretch;gap:8px;">' +
-            '<div style="display:grid;grid-template-columns:1fr 100px;gap:8px;">' +
-              '<input id="el-name" type="text" value="' + l.name + '" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">' +
-              '<input id="el-amt" type="number" value="' + l.amount + '" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">' +
+function renderAssets() {
+  var html = '';
+  if (!assets.length) {
+    html = '<div style="padding:16px;text-align:center;color:var(--text3);font-size:13px;">No assets yet — add one below.</div>';
+  } else {
+    ['liquid','retire','physical'].forEach(function(cat) {
+      var items = assets.filter(function(a) { return a.cat === cat; });
+      if (!items.length) return;
+      var catTot = items.reduce(function(s,a) { return s+a.amount; }, 0);
+      html += '<div class="cat-label"><span>' + catLabels[cat] + '</span><span>' + fmt(catTot) + '</span></div>';
+      items.forEach(function(a) {
+        if (editAssetId === a.id) {
+          html += '<div class="edit-form">' +
+            '<input type="text" id="ea-name" value="' + a.name + '" placeholder="Name" style="flex:1;min-width:120px;">' +
+            '<input type="number" id="ea-amt" value="' + a.amount + '" style="width:100px;">' +
+            '<select id="ea-cat">' +
+              '<option value="liquid"' + (a.cat==='liquid'?' selected':'') + '>Liquid</option>' +
+              '<option value="retire"' + (a.cat==='retire'?' selected':'') + '>Retirement</option>' +
+              '<option value="physical"' + (a.cat==='physical'?' selected':'') + '>Physical</option>' +
+            '</select>' +
+            '<button class="btn btn-primary btn-sm" onclick="saveAsset(\'' + a.id + '\')">Save</button>' +
+            '<button class="btn btn-sm" style="background:var(--bg2);color:var(--text2);border:none;" onclick="cancelEdit()">Cancel</button>' +
+          '</div>';
+        } else {
+          html += '<div class="item-row">' +
+            '<div><div style="font-weight:500;">' + a.name + '</div>' + (a.sub ? '<div style="font-size:11px;color:var(--text3);">' + a.sub + '</div>' : '') + '</div>' +
+            '<div style="display:flex;align-items:center;gap:6px;">' +
+              '<span style="font-weight:600;">' + fmt(a.amount) + '</span>' +
+              '<button class="edit-btn" onclick="editAsset(\'' + a.id + '\')">Edit</button>' +
+              '<button class="del-btn" onclick="deleteAsset(\'' + a.id + '\')">×</button>' +
             '</div>' +
-            '<input id="el-sub" type="text" value="' + l.sub + '" placeholder="Description (optional)" style="padding:6px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-family:'DM Sans',sans-serif;color:var(--text);outline:none;">' +
-            '<div style="display:flex;gap:6px;">' +
-              '<button class="btn btn-primary btn-sm" onclick="saveLiability(' + i + ')">Save</button>' +
-              '<button class="btn btn-sm" style="background:var(--bg2);color:var(--text2);border:none;" onclick="cancelLiabilityEdit()">Cancel</button>' +
-            '</div></div>';
+          '</div>';
         }
-        return '<div class="item-row"><div><div style="font-weight:500;">' + l.name + '</div><div class="item-sub">' + l.sub + '</div></div>' +
-          '<div style="display:flex;align-items:center;gap:6px;"><span style="font-weight:600;color:var(--red);">' + fmt(l.amount) + '</span>' +
-          '<button class="btn btn-outline btn-sm" onclick="startLiabilityEdit(' + i + ')">Edit</button>' +
-          '<button class="del-btn" onclick="removeLiability(' + i + ')">×</button></div></div>';
-      }).join('');
-    }
-
-    // Trend — calculate from current month only for now
-    var now = new Date();
-    var monthLabel = now.toLocaleDateString('en-US', { month:'long', year:'numeric' });
-    document.getElementById('trend-list').innerHTML =
-      '<div class="trend-row"><div style="font-size:12px;font-weight:600;color:var(--text);">' + monthLabel + '</div>' +
-      '<div><div class="bar-track"><div class="' + (c.nw<0?'bar-fill-neg':'bar-fill-pos') + '" style="width:60%;"></div></div></div>' +
-      '<div style="font-weight:600;color:' + (c.nw<0?'var(--red)':'var(--green)') + ';">' + fmt(c.nw) + '</div>' +
-      '<div style="color:var(--text3);">Current month</div></div>';
-  }
-
-  function startAssetEdit(i)     { editAsset = i; editLiability = null; render(); }
-  function cancelAssetEdit()     { editAsset = null; render(); }
-  function startLiabilityEdit(i) { editLiability = i; editAsset = null; render(); }
-  function cancelLiabilityEdit() { editLiability = null; render(); }
-
-  function saveAsset(i) {
-    var name = document.getElementById('ea-name').value.trim();
-    var amount = parseFloat(document.getElementById('ea-amt').value) || 0;
-    var sub  = document.getElementById('ea-sub').value.trim();
-    var cat  = document.getElementById('ea-cat').value;
-    if (!name) return;
-    db.from('assets').update({ name:name, amount:amount, sub:sub, category:cat }).eq('id', assets[i].id).then(function(res) {
-      if (res.error) { alert('Error: ' + res.error.message); return; }
-      editAsset = null;
-      setTimeout(function() { loadAll(); }, 300);
+      });
     });
   }
+  document.getElementById('assets-list').innerHTML = html;
+}
 
-  function saveLiability(i) {
-    var name = document.getElementById('el-name').value.trim();
-    var amount = parseFloat(document.getElementById('el-amt').value) || 0;
-    var sub  = document.getElementById('el-sub').value.trim();
-    if (!name) return;
-    db.from('liabilities').update({ name:name, amount:amount, sub:sub }).eq('id', liabilities[i].id).then(function(res) {
-      if (res.error) { alert('Error: ' + res.error.message); return; }
-      editLiability = null;
-      setTimeout(function() { loadAll(); }, 300);
+function renderLiabilities() {
+  var html = '';
+  if (!liabilities.length) {
+    html = '<div style="padding:16px;text-align:center;color:var(--text3);font-size:13px;">No liabilities yet — add one below.</div>';
+  } else {
+    liabilities.forEach(function(l) {
+      if (editLiabilityId === l.id) {
+        html += '<div class="edit-form edit-form-red">' +
+          '<input type="text" id="el-name" value="' + l.name + '" placeholder="Name" style="flex:1;min-width:120px;">' +
+          '<input type="number" id="el-amt" value="' + l.amount + '" style="width:100px;">' +
+          '<button class="btn btn-primary btn-sm" onclick="saveLiability(\'' + l.id + '\')">Save</button>' +
+          '<button class="btn btn-sm" style="background:var(--bg2);color:var(--text2);border:none;" onclick="cancelEdit()">Cancel</button>' +
+        '</div>';
+      } else {
+        html += '<div class="item-row">' +
+          '<div><div style="font-weight:500;">' + l.name + '</div>' + (l.sub ? '<div style="font-size:11px;color:var(--text3);">' + l.sub + '</div>' : '') + '</div>' +
+          '<div style="display:flex;align-items:center;gap:6px;">' +
+            '<span style="font-weight:600;color:var(--red);">' + fmt(l.amount) + '</span>' +
+            '<button class="edit-btn" onclick="editLiability(\'' + l.id + '\')">Edit</button>' +
+            '<button class="del-btn" onclick="deleteLiability(\'' + l.id + '\')">×</button>' +
+          '</div>' +
+        '</div>';
+      }
     });
   }
+  document.getElementById('liabilities-list').innerHTML = html;
+}
 
-  function addAsset() {
-    var name = document.getElementById('asset-name').value.trim();
-    var amount = parseFloat(document.getElementById('asset-amt').value) || 0;
-    var cat  = document.querySelector('input[name="acat"]:checked') ? document.querySelector('input[name="acat"]:checked').value : 'liquid';
-    if (!name || !amount) return;
-    db.from('assets').insert({ user_id:currentUser.id, name:name, amount:amount, category:cat, sub:'' }).then(function(res) {
-      if (res.error) { alert('Error: ' + res.error.message); return; }
-      document.getElementById('asset-name').value = '';
-      document.getElementById('asset-amt').value  = '';
-      loadAll();
-    });
-  }
+function editAsset(id)     { editAssetId = id; editLiabilityId = null; render(); }
+function editLiability(id) { editLiabilityId = id; editAssetId = null; render(); }
+function cancelEdit()      { editAssetId = null; editLiabilityId = null; render(); }
 
-  function addLiability() {
-    var name = document.getElementById('liability-name').value.trim();
-    var amount = parseFloat(document.getElementById('liability-amt').value) || 0;
-    if (!name || !amount) return;
-    db.from('liabilities').insert({ user_id:currentUser.id, name:name, amount:amount, sub:'' }).then(function(res) {
-      if (res.error) { alert('Error: ' + res.error.message); return; }
-      document.getElementById('liability-name').value = '';
-      document.getElementById('liability-amt').value  = '';
-      loadAll();
-    });
-  }
+function saveAsset(id) {
+  var name = document.getElementById('ea-name').value.trim();
+  var amount = parseFloat(document.getElementById('ea-amt').value) || 0;
+  var cat  = document.getElementById('ea-cat').value;
+  if (!name) { alert('Please enter a name.'); return; }
+  db.from('assets').update({ name:name, amount:amount, category:cat }).eq('id', id).then(function(res) {
+    if (res.error) { alert('Error saving: ' + res.error.message); return; }
+    editAssetId = null;
+    setTimeout(loadAll, 300);
+  });
+}
 
-  function removeAsset(i) {
-    db.from('assets').delete().eq('id', assets[i].id).then(function(res) { if (res.error) { alert('Error: ' + res.error.message); return; } setTimeout(function() { loadAll(); }, 300); });
-  }
+function saveLiability(id) {
+  var name = document.getElementById('el-name').value.trim();
+  var amount = parseFloat(document.getElementById('el-amt').value) || 0;
+  if (!name) { alert('Please enter a name.'); return; }
+  db.from('liabilities').update({ name:name, amount:amount }).eq('id', id).then(function(res) {
+    if (res.error) { alert('Error saving: ' + res.error.message); return; }
+    editLiabilityId = null;
+    setTimeout(loadAll, 300);
+  });
+}
 
-  function removeLiability(i) {
-    db.from('liabilities').delete().eq('id', liabilities[i].id).then(function(res) { if (res.error) { alert('Error: ' + res.error.message); return; } setTimeout(function() { loadAll(); }, 300); });
-  }
+function addAsset() {
+  var name = document.getElementById('asset-name').value.trim();
+  var amount = parseFloat(document.getElementById('asset-amt').value) || 0;
+  var cat  = document.querySelector('input[name="acat"]:checked') ? document.querySelector('input[name="acat"]:checked').value : 'liquid';
+  if (!name || !amount) { alert('Please enter a name and value.'); return; }
+  db.from('assets').insert({ user_id:currentUser.id, name:name, amount:amount, category:cat, sub:'' }).select().then(function(res) {
+    if (res.error) { alert('Error adding: ' + res.error.message); return; }
+    document.getElementById('asset-name').value = '';
+    document.getElementById('asset-amt').value  = '';
+    setTimeout(loadAll, 300);
+  });
+}
+
+function addLiability() {
+  var name = document.getElementById('liability-name').value.trim();
+  var amount = parseFloat(document.getElementById('liability-amt').value) || 0;
+  if (!name || !amount) { alert('Please enter a name and amount.'); return; }
+  db.from('liabilities').insert({ user_id:currentUser.id, name:name, amount:amount, sub:'' }).select().then(function(res) {
+    if (res.error) { alert('Error adding: ' + res.error.message); return; }
+    document.getElementById('liability-name').value = '';
+    document.getElementById('liability-amt').value  = '';
+    setTimeout(loadAll, 300);
+  });
+}
+
+function deleteAsset(id) {
+  if (!confirm('Remove this asset?')) return;
+  db.from('assets').delete().eq('id', id).then(function(res) {
+    if (res.error) { alert('Error: ' + res.error.message); return; }
+    setTimeout(loadAll, 300);
+  });
+}
+
+function deleteLiability(id) {
+  if (!confirm('Remove this liability?')) return;
+  db.from('liabilities').delete().eq('id', id).then(function(res) {
+    if (res.error) { alert('Error: ' + res.error.message); return; }
+    setTimeout(loadAll, 300);
+  });
+}
 </script>
 </body>
 </html>

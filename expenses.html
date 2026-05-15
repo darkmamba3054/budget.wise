@@ -8,69 +8,66 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="supabase.js"></script>
   <script src="auth-guard.js"></script>
-  
+  <style>
+    .edit-row td { background: var(--green-l) !important; }
+    .edit-row input, .edit-row select { padding: 5px 8px; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); font-family: "DM Sans",sans-serif; color: var(--text); width: 100%; outline: none; }
+  </style>
 </head>
 <body>
-
 <script src="nav.js"></script>
-
 <div class="page">
   <div class="page-header">
     <h1>Expenses</h1>
-    <p>Track every dollar you spend.</p>
+    <p>Track your spending for the month.</p>
   </div>
 
-  <!-- Add expense form -->
-  <div class="card" style="margin-bottom: 24px;">
-    <div class="section-header" style="margin-bottom:20px;">
-      <h2>Add an expense</h2>
-    </div>
+  <div class="card" style="margin-bottom:24px;">
+    <div class="section-header" style="margin-bottom:16px;"><h2>Add an expense</h2></div>
     <div class="form-row">
       <div class="form-group">
-        <label for="exp-name">Expense name</label>
+        <label>Description</label>
         <input type="text" id="exp-name" placeholder="e.g. Groceries">
       </div>
       <div class="form-group">
-        <label for="exp-amount">Amount ($)</label>
+        <label>Amount ($)</label>
         <input type="number" id="exp-amount" placeholder="0.00" min="0" step="0.01">
       </div>
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label for="exp-category">Category</label>
+        <label>Category</label>
         <select id="exp-category">
-          <option value="">Select a category</option>
-          <option>Food & Groceries</option>
+          <option value="">Select category</option>
           <option>Housing</option>
+          <option>Food & Groceries</option>
           <option>Transport</option>
           <option>Subscription</option>
           <option>Entertainment</option>
           <option>Health</option>
+          <option>Giving</option>
           <option>Other</option>
         </select>
       </div>
       <div class="form-group">
-        <label for="exp-date">Date</label>
+        <label>Date</label>
         <input type="date" id="exp-date">
       </div>
     </div>
     <button class="btn btn-primary" onclick="addExpense()">Add expense</button>
+    <div id="exp-msg" style="font-size:13px;margin-top:8px;display:none;"></div>
   </div>
 
-  <!-- Expense list -->
-  <div class="section-header">
-    <h2>This month</h2>
-    <span style="font-size:14px; color:var(--text2);">Total: <strong id="total-display">$1,033.40</strong></span>
-  </div>
-  <div class="card">
+  <div class="section-header"><h2>This month's expenses</h2></div>
+  <div class="card" style="padding:0;overflow:hidden;">
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Name</th>
+            <th>Description</th>
             <th>Category</th>
             <th>Date</th>
-            <th>Amount</th>
+            <th style="text-align:right;">Amount</th>
+            <th></th>
             <th></th>
           </tr>
         </thead>
@@ -81,72 +78,93 @@
 </div>
 
 <script>
-  var db = (window.supabase || window.supabasejs).createClient(SUPABASE_URL, SUPABASE_KEY);
-  var currentUser = null;
+var db = (window.supabase || window.supabasejs).createClient(SUPABASE_URL, SUPABASE_KEY);
+var currentUser = null;
 
-  document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('exp-date').valueAsDate = new Date();
-    db.auth.getSession().then(function(res) {
-      if (!res.data || !res.data.session) { window.location.replace('login.html'); return; }
-      currentUser = res.data.session.user;
-      loadExpenses();
-    });
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('exp-date').valueAsDate = new Date();
+  db.auth.getSession().then(function(res) {
+    if (!res.data || !res.data.session) { window.location.replace('login.html'); return; }
+    currentUser = res.data.session.user;
+    loadExpenses();
   });
+});
 
-  function loadExpenses() {
-    var now = new Date();
-    var monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
-    var monthEnd   = new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString().slice(0,10);
-    db.from('expenses').select('*').eq('user_id', currentUser.id)
-      .gte('date', monthStart).lte('date', monthEnd)
-      .order('date', { ascending: false })
-      .then(function(res) {
-        var tbody = document.getElementById('expense-tbody');
-        var expenses = res.data || [];
-        if (!expenses.length) {
-          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text3);">No expenses yet this month — add your first one above.</td></tr>';
-          return;
-        }
-        var catBadge = { 'Food & Groceries':'badge-green', 'Housing':'badge-red', 'Transport':'badge-amber', 'Subscription':'badge-gray', 'Entertainment':'badge-gray', 'Health':'badge-green', 'Other':'badge-gray' };
-        tbody.innerHTML = expenses.map(function(e) {
-          var d = new Date(e.date + 'T00:00:00');
-          var dateStr = d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
-          var badge = catBadge[e.category] || 'badge-gray';
-          return '<tr>' +
-            '<td>' + e.name + '</td>' +
-            '<td><span class="badge ' + badge + '">' + (e.category||'Other') + '</span></td>' +
-            '<td style="color:var(--text2);">' + dateStr + '</td>' +
-            '<td style="font-weight:500;">$' + parseFloat(e.amount).toFixed(2) + '</td>' +
-            '<td><button class="btn btn-danger btn-sm" onclick="deleteExpense('' + e.id + '', this)">Remove</button></td>' +
-          '</tr>';
-        }).join('');
-      });
-  }
-
-  function addExpense() {
-    var name     = document.getElementById('exp-name').value.trim();
-    var amount   = parseFloat(document.getElementById('exp-amount').value);
-    var category = document.getElementById('exp-category').value;
-    var date     = document.getElementById('exp-date').value;
-    if (!name || !amount || !category || !date) { alert('Please fill in all fields.'); return; }
-    db.from('expenses').insert({ user_id:currentUser.id, name:name, amount:amount, category:category, date:date })
-      .then(function(res) {
-        if (res.error) { alert('Error: ' + res.error.message); return; }
-        document.getElementById('exp-name').value = '';
-        document.getElementById('exp-amount').value = '';
-        document.getElementById('exp-category').value = '';
-        document.getElementById('exp-date').valueAsDate = new Date();
-        loadExpenses();
-      });
-  }
-
-  function deleteExpense(id, btn) {
-    db.from('expenses').delete().eq('id', id).then(function(res) {
-      if (res.error) { alert('Error removing: ' + res.error.message); return; }
-      setTimeout(function() { loadExpenses(); }, 300);
+function loadExpenses() {
+  var now = new Date();
+  var monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+  var monthEnd   = new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString().slice(0,10);
+  db.from('expenses').select('*').eq('user_id', currentUser.id)
+    .gte('date', monthStart).lte('date', monthEnd)
+    .order('date', { ascending: false })
+    .then(function(res) {
+      if (res.error) { console.error('Load error:', res.error); return; }
+      var tbody = document.getElementById('expense-tbody');
+      var expenses = res.data || [];
+      if (!expenses.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text3);">No expenses yet this month.</td></tr>';
+        return;
+      }
+      var catBadge = { 'Housing':'badge-red', 'Food & Groceries':'badge-green', 'Transport':'badge-amber', 'Subscription':'badge-gray', 'Entertainment':'badge-gray', 'Health':'badge-green', 'Giving':'badge-green', 'Other':'badge-gray' };
+      tbody.innerHTML = expenses.map(function(e) {
+        var d = new Date(e.date + 'T00:00:00');
+        var dateStr = d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+        var badge = catBadge[e.category] || 'badge-gray';
+        return '<tr>' +
+          '<td style="font-weight:500;">' + e.name + '</td>' +
+          '<td><span class="badge ' + badge + '">' + (e.category||'Other') + '</span></td>' +
+          '<td style="color:var(--text2);">' + dateStr + '</td>' +
+          '<td style="text-align:right;font-weight:600;">$' + parseFloat(e.amount).toFixed(2) + '</td>' +
+          '<td><button class="btn btn-sm" style="background:var(--red-l);color:var(--red);border:none;" onclick="deleteExpense(\'' + e.id + '\', this)">Remove</button></td>' +
+        '</tr>';
+      }).join('');
     });
-  }
-</script>
+}
 
+function addExpense() {
+  var name     = document.getElementById('exp-name').value.trim();
+  var amount   = parseFloat(document.getElementById('exp-amount').value);
+  var category = document.getElementById('exp-category').value;
+  var date     = document.getElementById('exp-date').value;
+  var msg      = document.getElementById('exp-msg');
+  if (!name || !amount || !category || !date) {
+    msg.style.display = 'block'; msg.style.color = 'var(--red)'; msg.textContent = 'Please fill in all fields.'; return;
+  }
+  db.from('expenses').insert({ user_id:currentUser.id, name:name, amount:amount, category:category, date:date }).select()
+    .then(function(res) {
+      if (res.error) { msg.style.display='block'; msg.style.color='var(--red)'; msg.textContent='Error: ' + res.error.message; return; }
+      document.getElementById('exp-name').value = '';
+      document.getElementById('exp-amount').value = '';
+      document.getElementById('exp-category').value = '';
+      document.getElementById('exp-date').valueAsDate = new Date();
+      msg.style.display = 'none';
+      setTimeout(loadExpenses, 300);
+    });
+}
+
+function startExpenseEdit(id) { window._editingExpenseId = id; loadExpenses(); }
+function cancelExpenseEdit()  { window._editingExpenseId = null; loadExpenses(); }
+
+function saveExpense(id) {
+  var name     = document.getElementById('ee-name').value.trim();
+  var amount   = parseFloat(document.getElementById('ee-amount').value);
+  var category = document.getElementById('ee-cat').value;
+  var date     = document.getElementById('ee-date').value;
+  if (!name || !amount) { alert('Please fill in all fields.'); return; }
+  db.from('expenses').update({ name:name, amount:amount, category:category, date:date }).eq('id', id)
+    .then(function(res) {
+      if (res.error) { alert('Error: ' + res.error.message); return; }
+      window._editingExpenseId = null;
+      setTimeout(loadExpenses, 300);
+    });
+}
+
+function deleteExpense(id, btn) {
+  db.from('expenses').delete().eq('id', id).then(function(res) {
+    if (res.error) { alert('Error: ' + res.error.message); return; }
+    btn.closest('tr').remove();
+  });
+}
+</script>
 </body>
 </html>
