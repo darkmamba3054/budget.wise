@@ -68,7 +68,7 @@
   document.write(
     '<nav>' +
       '<div class="nav-inner">' +
-        '<a class="nav-brand" href="index.html"><img src="images/logo.png" alt="CheckMate Budget" style="height:36px;width:auto;vertical-align:middle;margin-right:8px;">CheckMate Budget</a>' +
+        '<a class="nav-brand" href="index.html"><img src="images/logo.png" alt="CheckMate Budget" style="height:40px;width:auto;display:block;">CheckMate Budget</a>' +
         '<div class="nav-groups">' + groupsHtml + '</div>' +
         '<div class="nav-user-area" id="nav-user-area">' +
           '<div class="nav-user-placeholder"></div>' +
