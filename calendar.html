@@ -8,10 +8,9 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="supabase.js"></script>
   <script src="auth-guard.js"></script>
-  
   <style>
-    .cal-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 24px; }
-    .cal-head { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); background: var(--bg); border-bottom: 1px solid var(--border); }
+    .cal-wrap { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 24px; }
+    .cal-head-row { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); background: var(--bg); border-bottom: 1px solid var(--border); }
     .cal-head-cell { padding: 10px 0; text-align: center; font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; }
     .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); }
     .cal-cell { min-height: 90px; border-right: 1px solid var(--bg2); border-bottom: 1px solid var(--bg2); padding: 8px 6px 6px; cursor: pointer; transition: background 0.1s; }
@@ -19,32 +18,28 @@
     .cal-cell:hover { background: #fdfcfa; }
     .cal-cell.today { background: var(--green-l); }
     .cal-cell.today .day-num { background: var(--green); color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-weight: 600; }
-    .cal-cell.payday { background: #e8f3ed; }
+    .cal-cell.payday { background: #edf7f1; }
     .cal-cell.other-month { background: #faf8f5; }
     .cal-cell.other-month .day-num { color: var(--border); }
-    .cal-cell.selected { outline: 2px solid var(--green); outline-offset: -2px; background: #fdfcfa; }
+    .cal-cell.selected { outline: 2px solid var(--green); outline-offset: -2px; }
     .day-num { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 4px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
     .cal-event { font-size: 10px; font-weight: 500; padding: 2px 5px; border-radius: 4px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .ev-expense { background: var(--amber-l); color: var(--amber); }
-    .ev-bill    { background: var(--red-l);   color: var(--red); }
+    .ev-bill    { background: var(--red-l);   color: var(--red);   }
     .ev-income  { background: var(--green-l); color: var(--green); }
-    .day-total  { font-size: 10px; color: var(--text3); margin-top: 2px; }
-    .legend { display: flex; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
-    .leg-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
-    .leg-dot { width: 10px; height: 10px; border-radius: 3px; }
-    .detail-panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; margin-bottom: 24px; }
-    .detail-title { font-family: 'DM Serif Display', serif; font-size: 18px; color: var(--text); margin-bottom: 14px; }
-    .detail-item { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--bg2); font-size: 14px; }
-    .detail-item:last-child { border-bottom: none; }
-    .detail-empty { font-size: 14px; color: var(--text3); padding: 12px 0; }
-    .forecast-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-    .fc-row { display: grid; grid-template-columns: 90px 1fr 110px 120px; gap: 8px; align-items: center; padding: 11px 16px; border-bottom: 1px solid var(--bg2); font-size: 13px; }
-    .fc-row:last-child { border-bottom: none; }
-    .fc-head { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; background: var(--bg); }
-    .bal-bar { height: 4px; background: var(--bg2); border-radius: 99px; margin-top: 4px; }
-    .bal-bar-fill { height: 100%; border-radius: 99px; background: var(--green); }
+    .ev-more    { font-size: 10px; color: var(--text3); padding: 1px 4px; }
     .payday-setup { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
     .payday-setup label { font-size: 13px; color: var(--text2); font-weight: 500; }
+    .payday-setup select, .payday-setup input { padding: 7px 10px; font-size: 13px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text); }
+    .detail-panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 24px; }
+    .detail-title { font-family: 'DM Serif Display', serif; font-size: 18px; color: var(--text); margin-bottom: 14px; }
+    .detail-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--bg2); font-size: 14px; }
+    .detail-item:last-child { border-bottom: none; }
+    .fc-row { display: grid; grid-template-columns: 90px 1fr 110px 120px; gap: 8px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--bg2); font-size: 13px; }
+    .fc-row:last-child { border-bottom: none; }
+    .fc-head { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; background: var(--bg); }
+    .legend { display: flex; gap: 16px; margin-bottom: 14px; }
+    .leg-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
+    .leg-dot { width: 10px; height: 10px; border-radius: 3px; }
   </style>
 </head>
 <body>
@@ -52,77 +47,67 @@
 <script src="nav.js"></script>
 
 <div class="page">
-  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
     <div class="page-header" style="margin-bottom:0;">
       <h1>Calendar</h1>
-      <p>Your bills, paydays, and balance forecast — all in one view.</p>
+      <p>Your bills, paydays, and balance forecast all in one view.</p>
     </div>
-    <div style="display:flex; align-items:center; gap:10px; margin-top:6px;">
-      <button class="btn btn-outline btn-sm" onclick="changeMonth(-1)">&#8592; Prev</button>
-      <span id="month-label" style="font-size:15px; font-weight:600; min-width:120px; text-align:center; color:var(--text);"></span>
-      <button class="btn btn-outline btn-sm" onclick="changeMonth(1)">Next &#8594;</button>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+      <button class="btn btn-outline btn-sm" onclick="changeMonth(-1)">← Prev</button>
+      <span id="month-label" style="font-size:14px;font-weight:600;min-width:100px;text-align:center;"></span>
+      <button class="btn btn-outline btn-sm" onclick="changeMonth(1)">Next →</button>
     </div>
   </div>
 
-  <!-- Payday setup -->
+  <!-- Pay setup -->
   <div class="payday-setup">
-    <div style="display:flex; flex-direction:column; gap:6px;">
-      <label style="font-size:12px; color:var(--text3); font-weight:600; text-transform:uppercase; letter-spacing:0.06em;">Pay schedule</label>
-      <select style="padding:8px 12px; font-size:13px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); font-family:'DM Sans',sans-serif; color:var(--text);" id="pay-schedule" onchange="renderAll()">
+    <div>
+      <label>Pay schedule</label><br>
+      <select id="pay-schedule" onchange="renderAll()">
         <option value="bimonthly">6th and 21st of each month</option>
         <option value="biweekly">Every 2 weeks</option>
       </select>
     </div>
-    <div style="width:1px; background:var(--border); align-self:stretch; margin:0 4px;"></div>
-    <div style="display:flex; flex-direction:column; gap:6px;">
-      <label style="font-size:12px; color:var(--text3); font-weight:600; text-transform:uppercase; letter-spacing:0.06em;">6th payday hours</label>
-      <select style="padding:8px 12px; font-size:13px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); font-family:'DM Sans',sans-serif; color:var(--text);" id="pay-amount-6" onchange="renderAll()">
-        <option value="2486">80 hrs — $2,486</option>
-        <option value="2798">88 hrs — $2,798</option>
-        <option value="3109" selected>96 hrs — $3,109</option>
-      </select>
-    </div>
-    <div style="display:flex; flex-direction:column; gap:6px;">
-      <label style="font-size:12px; color:var(--text3); font-weight:600; text-transform:uppercase; letter-spacing:0.06em;">21st payday hours</label>
-      <select style="padding:8px 12px; font-size:13px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); font-family:'DM Sans',sans-serif; color:var(--text);" id="pay-amount-21" onchange="renderAll()">
-        <option value="2486">80 hrs — $2,486</option>
-        <option value="2798" selected>88 hrs — $2,798</option>
+    <div>
+      <label>6th payday hours</label><br>
+      <select id="pay-amount-6" onchange="renderAll()">
         <option value="3109">96 hrs — $3,109</option>
+        <option value="2798">88 hrs — $2,798</option>
+        <option value="2488">80 hrs — $2,488</option>
+        <option value="2023">72 hrs — $2,023</option>
       </select>
     </div>
-    <div style="width:1px; background:var(--border); align-self:stretch; margin:0 4px;"></div>
-    <div style="display:flex; flex-direction:column; gap:6px;">
-      <label style="font-size:12px; color:var(--text3); font-weight:600; text-transform:uppercase; letter-spacing:0.06em;">Current balance</label>
-      <input type="number" id="start-bal" value="450" style="width:110px; padding:8px 12px; font-size:13px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); font-family:'DM Sans',sans-serif; color:var(--text);" oninput="renderAll()">
+    <div>
+      <label>21st payday hours</label><br>
+      <select id="pay-amount-21" onchange="renderAll()">
+        <option value="2798">88 hrs — $2,798</option>
+        <option value="3109">96 hrs — $3,109</option>
+        <option value="2488">80 hrs — $2,488</option>
+        <option value="2023">72 hrs — $2,023</option>
+      </select>
+    </div>
+    <div>
+      <label>Current balance ($)</label><br>
+      <input type="number" id="start-bal" value="0" style="width:120px;" oninput="renderAll()">
     </div>
   </div>
 
   <!-- Stats -->
   <div class="grid-3" style="margin-bottom:20px;">
-    <div class="card">
-      <div class="card-title">Total bills due</div>
-      <div class="card-value red" id="stat-bills">$0</div>
-    </div>
-    <div class="card">
-      <div class="card-title">Total paychecks</div>
-      <div class="card-value green" id="stat-pay">$0</div>
-    </div>
-    <div class="card">
-      <div class="card-title">Projected end balance</div>
-      <div class="card-value" id="stat-end">$0</div>
-    </div>
+    <div class="card"><div class="card-title">Total bills due</div><div class="card-value red" id="stat-bills">$0</div></div>
+    <div class="card"><div class="card-title">Total paychecks</div><div class="card-value green" id="stat-pay">$0</div></div>
+    <div class="card"><div class="card-title">Projected end balance</div><div class="card-value" id="stat-end">$0</div></div>
   </div>
 
   <!-- Legend -->
   <div class="legend">
-    <div class="leg-item"><div class="leg-dot" style="background:var(--green-l); border:1px solid var(--green-m);"></div>Payday</div>
-    <div class="leg-item"><div class="leg-dot" style="background:var(--red-l); border:1px solid #f5bbb4;"></div>Bill due</div>
-    <div class="leg-item"><div class="leg-dot" style="background:var(--amber-l); border:1px solid #f0c88a;"></div>Expense</div>
+    <div class="leg-item"><div class="leg-dot" style="background:var(--green-l);border:1px solid var(--green-m);"></div>Payday</div>
+    <div class="leg-item"><div class="leg-dot ev-bill"></div>Bill due</div>
   </div>
 
   <!-- Calendar -->
-  <div class="cal-card">
-    <div class="cal-head">
+  <div class="cal-wrap">
+    <div class="cal-head-row">
       <div class="cal-head-cell">Sun</div>
       <div class="cal-head-cell">Mon</div>
       <div class="cal-head-cell">Tue</div>
@@ -137,14 +122,12 @@
   <!-- Day detail -->
   <div class="detail-panel">
     <div class="detail-title" id="detail-title">Click a day to see details</div>
-    <div id="detail-list"><p class="detail-empty">Select a date on the calendar above.</p></div>
+    <div id="detail-list"><p style="color:var(--text3);font-size:14px;">Select a date on the calendar above.</p></div>
   </div>
 
   <!-- Balance forecast -->
-  <div class="section-header" style="margin-bottom:14px;">
-    <h2>Balance forecast — day by day</h2>
-  </div>
-  <div class="forecast-card">
+  <div class="section-header" style="margin-bottom:14px;"><h2>Balance forecast — day by day</h2></div>
+  <div class="card" style="padding:0;overflow:hidden;">
     <div class="fc-row fc-head">
       <div>Date</div><div>Event</div><div>Amount</div><div style="text-align:right;">Running balance</div>
     </div>
@@ -153,401 +136,253 @@
 </div>
 
 <script>
-  var db = (window.supabase || window.supabasejs).createClient(SUPABASE_URL, SUPABASE_KEY);
-  var currentUser = null;
-  var bills = [];
-  var currentYear = new Date().getFullYear();
-  var currentMonth = new Date().getMonth();
-  var selectedDate = null;
+var db = (window.supabase || window.supabasejs).createClient(SUPABASE_URL, SUPABASE_KEY);
+var currentUser = null;
+var bills = [];
+var currentYear  = new Date().getFullYear();
+var currentMonth = new Date().getMonth();
+var selectedDate = null;
 
-  document.addEventListener('DOMContentLoaded', function() {
-    db.auth.getSession().then(function(res) {
-      if (!res.data || !res.data.session) { window.location.replace('login.html'); return; }
-      currentUser = res.data.session.user;
-      db.from('bills').select('*').eq('user_id', currentUser.id).then(function(r) {
-        if (r.error) { console.error(r.error); return; }
-        bills = (r.data || []).map(function(b) {
-          return { label:b.name, amount:parseFloat(b.amount), day:b.due_day||null, category:b.category||'Other', split:b.split||false, splitP1:b.split_p1||null, splitP2:b.split_p2||null };
-        });
-        renderAll();
+document.addEventListener('DOMContentLoaded', function() {
+  db.auth.getSession().then(function(res) {
+    if (!res.data || !res.data.session) { window.location.replace('login.html'); return; }
+    currentUser = res.data.session.user;
+    db.from('bills').select('*').eq('user_id', currentUser.id).then(function(r) {
+      if (r.error) { console.error(r.error); return; }
+      bills = (r.data || []).map(function(b) {
+        return {
+          label:   b.name,
+          amount:  parseFloat(b.amount),
+          day:     b.due_day || null,
+          split:   b.split || false,
+          splitP1: b.split_p1 || null,
+          splitP2: b.split_p2 || null,
+        };
       });
+      renderAll();
     });
   });
+});
 
-  function pad(n) { return String(n).padStart(2, '0'); }
-  function dateKey(y, m, d) { return `${y}-${pad(m+1)}-${pad(d)}`; }
-  function fmt(n) { return '$' + Math.round(n).toLocaleString(); }
+function pad(n) { return String(n).padStart(2,'0'); }
+function dateKey(y,m,d) { return y + '-' + pad(m+1) + '-' + pad(d); }
+function fmt(n) { return '$' + Math.round(n).toLocaleString(); }
 
-  function buildEvents(y, m) {
-    var events = {};<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Calendar — CheckMate Budget</title>
-  <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="supabase.js"></script>
-  <script src="auth-guard.js"></script>
-  
-  <style>
-    .cal-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 24px; }
-    .cal-head { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); background: var(--bg); border-bottom: 1px solid var(--border); }
-    .cal-head-cell { padding: 10px 0; text-align: center; font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; }
-    .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); }
-    .cal-cell { min-height: 90px; border-right: 1px solid var(--bg2); border-bottom: 1px solid var(--bg2); padding: 8px 6px 6px; cursor: pointer; transition: background 0.1s; }
-    .cal-cell:nth-child(7n) { border-right: none; }
-    .cal-cell:hover { background: #fdfcfa; }
-    .cal-cell.today { background: var(--green-l); }
-    .cal-cell.today .day-num { background: var(--green); color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-weight: 600; }
-    .cal-cell.payday { background: #e8f3ed; }
-    .cal-cell.other-month { background: #faf8f5; }
-    .cal-cell.other-month .day-num { color: var(--border); }
-    .cal-cell.selected { outline: 2px solid var(--green); outline-offset: -2px; background: #fdfcfa; }
-    .day-num { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 4px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
-    .cal-event { font-size: 10px; font-weight: 500; padding: 2px 5px; border-radius: 4px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .ev-expense { background: var(--amber-l); color: var(--amber); }
-    .ev-bill    { background: var(--red-l);   color: var(--red); }
-    .ev-income  { background: var(--green-l); color: var(--green); }
-    .day-total  { font-size: 10px; color: var(--text3); margin-top: 2px; }
-    .legend { display: flex; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
-    .leg-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
-    .leg-dot { width: 10px; height: 10px; border-radius: 3px; }
-    .detail-panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; margin-bottom: 24px; }
-    .detail-title { font-family: 'DM Serif Display', serif; font-size: 18px; color: var(--text); margin-bottom: 14px; }
-    .detail-item { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--bg2); font-size: 14px; }
-    .detail-item:last-child { border-bottom: none; }
-    .detail-empty { font-size: 14px; color: var(--text3); padding: 12px 0; }
-    .forecast-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-    .fc-row { display: grid; grid-template-columns: 90px 1fr 110px 120px; gap: 8px; align-items: center; padding: 11px 16px; border-bottom: 1px solid var(--bg2); font-size: 13px; }
-    .fc-row:last-child { border-bottom: none; }
-    .fc-head { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; background: var(--bg); }
-    .bal-bar { height: 4px; background: var(--bg2); border-radius: 99px; margin-top: 4px; }
-    .bal-bar-fill { height: 100%; border-radius: 99px; background: var(--green); }
-    .payday-setup { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-    .payday-setup label { font-size: 13px; color: var(--text2); font-weight: 500; }
-  </style>
-</head>
-<body>
+function getPayAmounts() {
+  return {
+    pay6:  parseInt(document.getElementById('pay-amount-6').value)  || 0,
+    pay21: parseInt(document.getElementById('pay-amount-21').value) || 0,
+  };
+}
 
-<script src="nav.js"></script>
+function buildEvents(y, m) {
+  var events = {};
+  var pay    = getPayAmounts();
+  var sched  = document.getElementById('pay-schedule').value;
+  var dim    = new Date(y, m+1, 0).getDate();
 
-<div class="page">
-  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px;">
-    <div class="page-header" style="margin-bottom:0;">
-      <h1>Calendar</h1>
-      <p>Your bills, paydays, and balance forecast — all in one view.</p>
-    </div>
-    <div style="display:flex; align-items:center; gap:10px; margin-top:6px;">
-      <button class="btn btn-outline btn-sm" onclick="changeMonth(-1)">&#8592; Prev</button>
-      <span id="month-label" style="font-size:15px; font-weight:600; min-width:120px; text-align:center; color:var(--text);"></span>
-      <button class="btn btn-outline btn-sm" onclick="changeMonth(1)">Next &#8594;</button>
-    </div>
-  </div>
+  function addEvent(k, ev) {
+    if (!events[k]) events[k] = [];
+    events[k].push(ev);
+  }
 
-  <!-- Payday setup -->
-  <div class="payday-setup">
-    <div style="display:flex; flex-direction:column; gap:6px;">
-      <label style="font-size:12px; color:var(--text3); font-weight:600; text-transform:uppercase; letter-spacing:0.06em;">Pay schedule</label>
-      <select style="padding:8px 12px; font-size:13px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); font-family:'DM Sans',sans-serif; color:var(--text);" id="pay-schedule" onchange="renderAll()">
-        <option value="bimonthly">6th and 21st of each month</option>
-        <option value="biweekly">Every 2 weeks</option>
-      </select>
-    </div>
-    <div style="width:1px; background:var(--border); align-self:stretch; margin:0 4px;"></div>
-    <div style="display:flex; flex-direction:column; gap:6px;">
-      <label style="font-size:12px; color:var(--text3); font-weight:600; text-transform:uppercase; letter-spacing:0.06em;">6th payday hours</label>
-      <select style="padding:8px 12px; font-size:13px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); font-family:'DM Sans',sans-serif; color:var(--text);" id="pay-amount-6" onchange="renderAll()">
-        <option value="2486">80 hrs — $2,486</option>
-        <option value="2798">88 hrs — $2,798</option>
-        <option value="3109" selected>96 hrs — $3,109</option>
-      </select>
-    </div>
-    <div style="display:flex; flex-direction:column; gap:6px;">
-      <label style="font-size:12px; color:var(--text3); font-weight:600; text-transform:uppercase; letter-spacing:0.06em;">21st payday hours</label>
-      <select style="padding:8px 12px; font-size:13px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); font-family:'DM Sans',sans-serif; color:var(--text);" id="pay-amount-21" onchange="renderAll()">
-        <option value="2486">80 hrs — $2,486</option>
-        <option value="2798" selected>88 hrs — $2,798</option>
-        <option value="3109">96 hrs — $3,109</option>
-      </select>
-    </div>
-    <div style="width:1px; background:var(--border); align-self:stretch; margin:0 4px;"></div>
-    <div style="display:flex; flex-direction:column; gap:6px;">
-      <label style="font-size:12px; color:var(--text3); font-weight:600; text-transform:uppercase; letter-spacing:0.06em;">Current balance</label>
-      <input type="number" id="start-bal" value="450" style="width:110px; padding:8px 12px; font-size:13px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); font-family:'DM Sans',sans-serif; color:var(--text);" oninput="renderAll()">
-    </div>
-  </div>
-
-  <!-- Stats -->
-  <div class="grid-3" style="margin-bottom:20px;">
-    <div class="card">
-      <div class="card-title">Total bills due</div>
-      <div class="card-value red" id="stat-bills">$0</div>
-    </div>
-    <div class="card">
-      <div class="card-title">Total paychecks</div>
-      <div class="card-value green" id="stat-pay">$0</div>
-    </div>
-    <div class="card">
-      <div class="card-title">Projected end balance</div>
-      <div class="card-value" id="stat-end">$0</div>
-    </div>
-  </div>
-
-  <!-- Legend -->
-  <div class="legend">
-    <div class="leg-item"><div class="leg-dot" style="background:var(--green-l); border:1px solid var(--green-m);"></div>Payday</div>
-    <div class="leg-item"><div class="leg-dot" style="background:var(--red-l); border:1px solid #f5bbb4;"></div>Bill due</div>
-    <div class="leg-item"><div class="leg-dot" style="background:var(--amber-l); border:1px solid #f0c88a;"></div>Expense</div>
-  </div>
-
-  <!-- Calendar -->
-  <div class="cal-card">
-    <div class="cal-head">
-      <div class="cal-head-cell">Sun</div>
-      <div class="cal-head-cell">Mon</div>
-      <div class="cal-head-cell">Tue</div>
-      <div class="cal-head-cell">Wed</div>
-      <div class="cal-head-cell">Thu</div>
-      <div class="cal-head-cell">Fri</div>
-      <div class="cal-head-cell">Sat</div>
-    </div>
-    <div class="cal-grid" id="cal-grid"></div>
-  </div>
-
-  <!-- Day detail -->
-  <div class="detail-panel">
-    <div class="detail-title" id="detail-title">Click a day to see details</div>
-    <div id="detail-list"><p class="detail-empty">Select a date on the calendar above.</p></div>
-  </div>
-
-  <!-- Balance forecast -->
-  <div class="section-header" style="margin-bottom:14px;">
-    <h2>Balance forecast — day by day</h2>
-  </div>
-  <div class="forecast-card">
-    <div class="fc-row fc-head">
-      <div>Date</div><div>Event</div><div>Amount</div><div style="text-align:right;">Running balance</div>
-    </div>
-    <div id="forecast-body"></div>
-  </div>
-</div>
-
-
-  function pad(n) { return String(n).padStart(2, '0'); }
-  function dateKey(y, m, d) { return `${y}-${pad(m+1)}-${pad(d)}`; }
-  function fmt(n) { return '$' + Math.round(n).toLocaleString(); }
-
-  function buildEvents(y, m) {
-    const events = {};
-    const pay6  = parseInt(document.getElementById('pay-amount-6').value);
-    const pay21 = parseInt(document.getElementById('pay-amount-21').value);
-    const hrs6  = document.getElementById('pay-amount-6').options[document.getElementById('pay-amount-6').selectedIndex].text.split(' ')[0];
-    const hrs21 = document.getElementById('pay-amount-21').options[document.getElementById('pay-amount-21').selectedIndex].text.split(' ')[0];
-    const sched = document.getElementById('pay-schedule').value;
-    const dim   = new Date(y, m+1, 0).getDate();
-
-    if (sched === 'bimonthly') {
-      if (6 <= dim) {
-        if (!events[dateKey(y,m,6)]) events[dateKey(y,m,6)] = [];
-        events[dateKey(y,m,6)].push({ label:`Payday (${hrs6} hrs)`, amount:pay6, type:'income' });
+  // Income events
+  if (sched === 'bimonthly') {
+    if (6  <= dim) addEvent(dateKey(y,m,6),  { label:'💰 Payday', amount:pay.pay6,  type:'income' });
+    if (21 <= dim) addEvent(dateKey(y,m,21), { label:'💰 Payday', amount:pay.pay21, type:'income' });
+  } else {
+    var base = new Date(2026, 3, 6);
+    var idx  = 0;
+    for (var d = 1; d <= dim; d++) {
+      var dt   = new Date(y, m, d);
+      var diff = Math.round((dt - base) / 86400000);
+      if (diff >= 0 && diff % 14 === 0) {
+        var amt = idx % 2 === 0 ? pay.pay6 : pay.pay21;
+        addEvent(dateKey(y,m,d), { label:'💰 Payday', amount:amt, type:'income' });
+        idx++;
       }
-      if (21 <= dim) {
-        if (!events[dateKey(y,m,21)]) events[dateKey(y,m,21)] = [];
-        events[dateKey(y,m,21)].push({ label:`Payday (${hrs21} hrs)`, amount:pay21, type:'income' });
-      }
+    }
+  }
+
+  // Bill events
+  bills.forEach(function(b) {
+    if (!b.day) return;
+    if (b.day > dim) return;
+    if (b.split && b.splitP1 && b.splitP2) {
+      var half = Math.round(b.amount / 2);
+      if (b.splitP1 <= dim) addEvent(dateKey(y,m,b.splitP1), { label:b.label + ' (½)', amount:half, type:'bill' });
+      if (b.splitP2 <= dim) addEvent(dateKey(y,m,b.splitP2), { label:b.label + ' (½)', amount:half, type:'bill' });
     } else {
-      const base = new Date(2026, 3, 6);
-      let payIdx = 0;
-      for (let d = 1; d <= dim; d++) {
-        const dt   = new Date(y, m, d);
-        const diff = Math.round((dt - base) / 86400000);
-        if (diff >= 0 && diff % 14 === 0) {
-          const amt  = payIdx % 2 === 0 ? pay6  : pay21;
-          const hrs  = payIdx % 2 === 0 ? hrs6  : hrs21;
-          const k    = dateKey(y, m, d);
-          if (!events[k]) events[k] = [];
-          events[k].push({ label:`Payday (${hrs} hrs)`, amount:amt, type:'income' });
-          payIdx++;
-        }
-      }
+      addEvent(dateKey(y,m,b.day), { label:b.label, amount:b.amount, type:'bill' });
     }
+  });
 
-    // Fixed-date bills
-    bills.filter(b => b.day).forEach(b => {
-      if (b.day <= dim) {
-        const k = dateKey(y, m, b.day);
-        if (!events[k]) events[k] = [];
-        events[k].push({ label:b.label, amount:b.amount, type:'bill' });
-      }
+  return events;
+}
+
+function buildForecast(y, m) {
+  var startBal = parseFloat(document.getElementById('start-bal').value) || 0;
+  var events   = buildEvents(y, m);
+  var dim      = new Date(y, m+1, 0).getDate();
+  var bal      = startBal;
+  var rows     = [{ date:'Start', label:'Opening balance', type:'start', amount:null, bal:bal }];
+
+  for (var d = 1; d <= dim; d++) {
+    var k   = dateKey(y, m, d);
+    var evs = (events[k] || []).slice().sort(function(a,b){ return a.type==='income'?-1:1; });
+    evs.forEach(function(ev) {
+      if (ev.type === 'income') bal += ev.amount;
+      else bal -= ev.amount;
+      var dateStr = new Date(y, m, d).toLocaleDateString('en-US', { month:'short', day:'numeric' });
+      rows.push({ date:dateStr, label:ev.label, type:ev.type, amount:ev.amount, bal:bal });
     });
-
-    return events;
   }
+  return rows;
+}
 
-  function buildForecast(y, m) {
-    const startBal = parseFloat(document.getElementById('start-bal').value) || 0;
-    const events = buildEvents(y, m);
-    const dim = new Date(y, m+1, 0).getDate();
-    let bal = startBal;
-    const rows = [{ date:'Start', label:'Opening balance', type:'start', amount:null, bal }];
+function renderAll() {
+  var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('month-label').textContent = monthNames[currentMonth] + ' ' + currentYear;
 
-    for (let d = 1; d <= dim; d++) {
-      const k = dateKey(y, m, d);
-      const evs = (events[k] || []).sort((a,b) => a.type === 'income' ? -1 : 1);
-      evs.forEach(ev => {
-        if (ev.type === 'income') bal += ev.amount;
-        else bal -= ev.amount;
-        const dateStr = new Date(y, m, d).toLocaleDateString('en-US', { month:'short', day:'numeric' });
-        rows.push({ date:dateStr, label:ev.label, type:ev.type, amount:ev.amount, bal });
-      });
+  var events   = buildEvents(currentYear, currentMonth);
+  var forecast = buildForecast(currentYear, currentMonth);
+
+  // Stats
+  var totalBills = forecast.filter(function(r){ return r.type==='bill'; }).reduce(function(s,r){ return s+r.amount; }, 0);
+  var totalPay   = forecast.filter(function(r){ return r.type==='income'; }).reduce(function(s,r){ return s+r.amount; }, 0);
+  var endBal     = forecast.length ? forecast[forecast.length-1].bal : 0;
+  document.getElementById('stat-bills').textContent = fmt(totalBills);
+  document.getElementById('stat-pay').textContent   = fmt(totalPay);
+  var endEl = document.getElementById('stat-end');
+  endEl.textContent = fmt(endBal);
+  endEl.className   = 'card-value ' + (endBal < 0 ? 'red' : endBal < 500 ? 'amber' : 'green');
+
+  renderCalendar(events);
+  renderForecast(forecast);
+}
+
+function renderCalendar(events) {
+  var firstDay    = new Date(currentYear, currentMonth, 1).getDay();
+  var daysInMonth = new Date(currentYear, currentMonth+1, 0).getDate();
+  var daysInPrev  = new Date(currentYear, currentMonth, 0).getDate();
+  var today       = new Date();
+  var grid        = document.getElementById('cal-grid');
+  grid.innerHTML  = '';
+  var totalCells  = Math.ceil((firstDay + daysInMonth) / 7) * 7;
+
+  for (var i = 0; i < totalCells; i++) {
+    var cell  = document.createElement('div');
+    cell.className = 'cal-cell';
+    var day, isOther = false, y = currentYear, m = currentMonth;
+
+    if (i < firstDay) {
+      day = daysInPrev - firstDay + i + 1;
+      isOther = true;
+      m = currentMonth - 1;
+      if (m < 0) { m = 11; y--; }
+    } else if (i >= firstDay + daysInMonth) {
+      day = i - firstDay - daysInMonth + 1;
+      isOther = true;
+      m = currentMonth + 1;
+      if (m > 11) { m = 0; y++; }
+    } else {
+      day = i - firstDay + 1;
     }
-    return rows;
-  }
 
-  function renderAll() {
-    const events  = buildEvents(currentYear, currentMonth);
-    const forecast = buildForecast(currentYear, currentMonth);
-    renderStats(forecast);
-    renderCalendar(events);
-    renderForecast(forecast);
-  }
+    var k     = dateKey(currentYear, currentMonth, day);
+    var isToday = !isOther && today.getFullYear()===currentYear && today.getMonth()===currentMonth && today.getDate()===day;
+    var evs   = events[k] || [];
+    var isPay = evs.some(function(e){ return e.type==='income'; });
+    var isSel = selectedDate === k;
 
-  function renderStats(forecast) {
-    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-    document.getElementById('month-label').textContent = `${monthNames[currentMonth]} ${currentYear}`;
-    const totalBills = forecast.filter(r => r.type === 'bill').reduce((s,r) => s + r.amount, 0);
-    const totalPay   = forecast.filter(r => r.type === 'income').reduce((s,r) => s + r.amount, 0);
-    const endBal     = forecast[forecast.length - 1]?.bal || 0;
-    document.getElementById('stat-bills').textContent = fmt(totalBills);
-    document.getElementById('stat-pay').textContent   = fmt(totalPay);
-    const endEl = document.getElementById('stat-end');
-    endEl.textContent = fmt(endBal);
-    endEl.className = 'card-value ' + (endBal < 0 ? 'red' : endBal < 500 ? 'amber' : 'green');
-  }
+    if (isOther) cell.classList.add('other-month');
+    if (isToday) cell.classList.add('today');
+    if (isPay && !isOther) cell.classList.add('payday');
+    if (isSel) cell.classList.add('selected');
 
-  function renderCalendar(events) {
-    const firstDay    = new Date(currentYear, currentMonth, 1).getDay();
-    const daysInMonth = new Date(currentYear, currentMonth+1, 0).getDate();
-    const daysInPrev  = new Date(currentYear, currentMonth, 0).getDate();
-    const today       = new Date();
-    const grid        = document.getElementById('cal-grid');
-    grid.innerHTML    = '';
-    const totalCells  = Math.ceil((firstDay + daysInMonth) / 7) * 7;
+    var numDiv = document.createElement('div');
+    numDiv.className = 'day-num';
+    numDiv.textContent = day;
+    cell.appendChild(numDiv);
 
-    for (let i = 0; i < totalCells; i++) {
-      let day, month, year, isOther = false;
-      if (i < firstDay) {
-        day = daysInPrev - firstDay + i + 1; month = currentMonth-1; year = currentYear;
-        if (month < 0) { month = 11; year--; }
-        isOther = true;
-      } else if (i >= firstDay + daysInMonth) {
-        day = i - firstDay - daysInMonth + 1; month = currentMonth+1; year = currentYear;
-        if (month > 11) { month = 0; year++; }
-        isOther = true;
-      } else {
-        day = i - firstDay + 1; month = currentMonth; year = currentYear;
-      }
-
-      const k = dateKey(year, month, day);
-      const dayEvents = events[k] || [];
-      const isPay  = dayEvents.some(e => e.type === 'income');
-      const isToday = !isOther && day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
-
-      const cell = document.createElement('div');
-      cell.className = 'cal-cell'
-        + (isOther              ? ' other-month' : '')
-        + (isToday && !isPay   ? ' today'        : '')
-        + (isPay               ? ' payday'       : '')
-        + (selectedDate === k  ? ' selected'     : '');
-
-      const numDiv = document.createElement('div');
-      numDiv.className = 'day-num';
-      numDiv.textContent = day;
-      cell.appendChild(numDiv);
-
-      if (isPay) {
-        const pd = document.createElement('div');
-        pd.className = 'cal-event ev-income';
-        pd.textContent = '💰 Payday';
-        cell.appendChild(pd);
-      }
-
-      dayEvents.filter(e => e.type === 'bill').slice(0,2).forEach(ev => {
-        const dot = document.createElement('div');
-        dot.className = 'cal-event ev-bill';
-        dot.textContent = ev.label;
-        cell.appendChild(dot);
+    if (!isOther) {
+      evs.slice(0,3).forEach(function(ev) {
+        var evDiv = document.createElement('div');
+        evDiv.className = 'cal-event ' + (ev.type==='income'?'ev-income':'ev-bill');
+        evDiv.textContent = ev.label;
+        cell.appendChild(evDiv);
       });
-
-      const moreBills = dayEvents.filter(e => e.type === 'bill').length;
-      if (moreBills > 2) {
-        const more = document.createElement('div');
-        more.className = 'day-total';
-        more.textContent = `+${moreBills - 2} more`;
+      if (evs.length > 3) {
+        var more = document.createElement('div');
+        more.className = 'ev-more';
+        more.textContent = '+' + (evs.length-3) + ' more';
         cell.appendChild(more);
       }
 
-      cell.onclick = () => selectDay(k, day, month, year);
-      grid.appendChild(cell);
+      (function(dk, dayNum) {
+        cell.onclick = function() { selectDay(dk, dayNum); };
+      })(k, day);
     }
+
+    grid.appendChild(cell);
+  }
+}
+
+function selectDay(k, day) {
+  selectedDate = selectedDate === k ? null : k;
+  var events = buildEvents(currentYear, currentMonth);
+  renderCalendar(events);
+
+  var title = document.getElementById('detail-title');
+  var list  = document.getElementById('detail-list');
+
+  if (!selectedDate) {
+    title.textContent = 'Click a day to see details';
+    list.innerHTML = '<p style="color:var(--text3);font-size:14px;">Select a date on the calendar above.</p>';
+    return;
   }
 
-  function renderForecast(forecast) {
-    const maxBal = Math.max(...forecast.map(r => r.bal), 1);
-    document.getElementById('forecast-body').innerHTML = forecast.map(r => {
-      const pct      = Math.max(0, Math.min(100, Math.round((r.bal / maxBal) * 100)));
-      const balClass = r.bal < 0 ? 'red' : r.bal < 300 ? 'amber' : 'green';
-      const sign     = r.type === 'income' ? '+' : r.type === 'bill' ? '-' : '';
-      const amtColor = r.type === 'income' ? 'var(--green)' : r.type === 'bill' ? 'var(--red)' : 'var(--text)';
-      return `<div class="fc-row">
-        <div style="color:var(--text2); font-size:12px;">${r.date}</div>
-        <div>
-          <div style="font-weight:${r.type==='income'?'600':'400'}; color:${r.type==='income'?'var(--green)':'var(--text)'};">${r.label}</div>
-          <div class="bal-bar"><div class="bal-bar-fill" style="width:${pct}%;"></div></div>
-        </div>
-        <div style="font-weight:500; color:${amtColor};">${r.amount !== null ? sign + fmt(r.amount) : '—'}</div>
-        <div style="font-weight:600; color:var(--${balClass}); text-align:right;">${fmt(r.bal)}</div>
-      </div>`;
-    }).join('');
+  var evs = events[k] || [];
+  var d   = new Date(currentYear, currentMonth, day);
+  title.textContent = d.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+
+  if (!evs.length) {
+    list.innerHTML = '<p style="color:var(--text3);font-size:14px;">Nothing scheduled on this day.</p>';
+    return;
   }
 
-  function selectDay(k, day, month, year) {
-    selectedDate = k;
-    renderAll();
-    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-    document.getElementById('detail-title').textContent = `${monthNames[month]} ${day}, ${year}`;
-    const events = buildEvents(currentYear, currentMonth);
-    const evs = events[k] || [];
-    const listEl = document.getElementById('detail-list');
-    if (evs.length === 0) {
-      listEl.innerHTML = '<p class="detail-empty">No bills or payday on this date.</p>';
-      return;
-    }
-    listEl.innerHTML = evs.map(ev => {
-      const badgeClass = ev.type === 'income' ? 'badge-green' : 'badge-red';
-      const label      = ev.type === 'income' ? 'Payday' : 'Bill';
-      const sign       = ev.type === 'income' ? '+' : '-';
-      const color      = ev.type === 'income' ? 'var(--green)' : 'var(--red)';
-      return `<div class="detail-item">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span class="badge ${badgeClass}">${label}</span>
-          <span style="font-weight:500;">${ev.label}</span>
-        </div>
-        <span style="font-weight:600;color:${color};">${sign}${fmt(ev.amount)}</span>
-      </div>`;
-    }).join('');
-  }
+  list.innerHTML = evs.map(function(ev) {
+    var color = ev.type==='income' ? 'var(--green)' : 'var(--red)';
+    var sign  = ev.type==='income' ? '+' : '-';
+    return '<div class="detail-item"><span style="font-weight:500;">' + ev.label + '</span><span style="font-weight:600;color:' + color + ';">' + sign + fmt(ev.amount) + '</span></div>';
+  }).join('');
+}
 
-  function changeMonth(dir) {
-    currentMonth += dir;
-    if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-    if (currentMonth < 0)  { currentMonth = 11; currentYear--; }
-    selectedDate = null;
-    renderAll();
-  }
+function renderForecast(forecast) {
+  var maxBal = Math.max.apply(null, forecast.map(function(r){ return r.bal; }));
+  document.getElementById('forecast-body').innerHTML = forecast.map(function(r) {
+    var pct      = maxBal > 0 ? Math.max(0, Math.min(100, Math.round((r.bal/maxBal)*100))) : 0;
+    var balClass = r.bal < 0 ? 'var(--red)' : r.bal < 300 ? 'var(--amber)' : 'var(--green)';
+    var sign     = r.type==='income' ? '+' : r.type==='bill' ? '-' : '';
+    var amtColor = r.type==='income' ? 'var(--green)' : r.type==='bill' ? 'var(--red)' : 'var(--text)';
+    return '<div class="fc-row">' +
+      '<div style="font-size:12px;color:var(--text2);">' + r.date + '</div>' +
+      '<div style="font-weight:500;">' + r.label + '</div>' +
+      '<div style="color:' + amtColor + ';font-weight:500;">' + (r.amount !== null ? sign + fmt(r.amount) : '—') + '</div>' +
+      '<div style="text-align:right;"><div style="font-weight:600;color:' + balClass + ';">' + fmt(r.bal) + '</div>' +
+        '<div style="height:3px;background:var(--bg2);border-radius:99px;margin-top:3px;"><div style="height:100%;width:' + pct + '%;background:' + balClass + ';border-radius:99px;"></div></div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
 
+function changeMonth(dir) {
+  currentMonth += dir;
+  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+  if (currentMonth < 0)  { currentMonth = 11; currentYear--; }
+  selectedDate = null;
   renderAll();
+}
 </script>
 
 </body>
