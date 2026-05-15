@@ -11,113 +11,63 @@
     .tip-icon { font-size: 18px; flex-shrink: 0; }
     .tip-text { font-size: 13px; color: #2a5c3f; line-height: 1.5; }
     .tip-text strong { font-weight: 600; }
-    .month-btn { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 5px 12px; font-size: 13px; cursor: pointer; color: var(--text); font-family: 'DM Sans', sans-serif; }
     .cat-meta { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; }
     .chart-wrap { position: relative; height: 200px; }
     .debt-legend { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
     .debt-leg-item { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
     .debt-leg-left { display: flex; align-items: center; gap: 8px; }
     .debt-leg-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+    .empty-state { text-align: center; padding: 32px; color: var(--text3); font-size: 14px; }
+    .empty-state a { color: var(--green); text-decoration: none; font-weight: 500; }
+    .skeleton { background: var(--bg2); border-radius: 6px; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
   </style>
 </head>
 <body>
 
+<script type="module" src="auth-guard.js"></script>
 <script src="nav.js"></script>
 
-<div class="page">
+<div class="page" id="main-content" style="display:none;">
   <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
     <div class="page-header" style="margin-bottom:0;">
-      <h1>Good morning ☁️</h1>
-      <p>Here's where your money stands this month.</p>
+      <h1 id="greeting">Good morning ☁️</h1>
+      <p id="greeting-sub">Here's where your money stands this month.</p>
     </div>
     <div style="display:flex; align-items:center; gap:8px; margin-top:6px;">
-      <button class="month-btn">← Apr</button>
-      <span style="font-size:14px; font-weight:600; min-width:85px; text-align:center;">May 2026</span>
-      <button class="month-btn">Jun →</button>
+      <button class="btn btn-outline btn-sm" onclick="changeMonth(-1)">← Prev</button>
+      <span id="month-label" style="font-size:14px; font-weight:600; min-width:85px; text-align:center;"></span>
+      <button class="btn btn-outline btn-sm" onclick="changeMonth(1)">Next →</button>
     </div>
   </div>
 
   <div class="tip">
     <div class="tip-icon">💡</div>
-    <div class="tip-text"><strong>You're on track.</strong> At this rate you'll have $882 left at month end. Consider moving some toward your Emergency Fund savings goal.</div>
+    <div class="tip-text" id="tip-text"><strong>Welcome to BudgetWise!</strong> Start by adding your bills and expenses to see your budget come to life.</div>
   </div>
 
-  <!-- Budget cards -->
-  <div class="grid-3">
-    <div class="card">
-      <div class="card-title">Monthly budget</div>
-      <div class="card-value">$2,000</div>
-      <div class="card-sub">Set for May 2026</div>
-    </div>
-    <div class="card">
-      <div class="card-title">Spent so far</div>
-      <div class="card-value amber">$1,118</div>
-      <div class="card-sub">55% of budget used</div>
-      <div class="progress-wrap">
-        <div class="progress-track"><div class="progress-fill amber" style="width:55%"></div></div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">Remaining</div>
-      <div class="card-value green">$882</div>
-      <div class="card-sub">17 days left this month</div>
-    </div>
+  <!-- Budget summary cards -->
+  <div class="grid-3" id="budget-cards">
+    <div class="card"><div class="card-title">Monthly budget</div><div class="card-value" id="card-budget">$0</div><div class="card-sub" id="card-budget-sub">No budget set</div></div>
+    <div class="card"><div class="card-title">Spent so far</div><div class="card-value amber" id="card-spent">$0</div><div class="card-sub" id="card-spent-sub">No expenses yet</div><div class="progress-wrap"><div class="progress-track"><div class="progress-fill amber" id="spend-bar" style="width:0%"></div></div></div></div>
+    <div class="card"><div class="card-title">Remaining</div><div class="card-value green" id="card-remaining">$0</div><div class="card-sub" id="card-remaining-sub">Add a budget to get started</div></div>
   </div>
 
   <!-- Spending + Upcoming bills -->
   <div class="grid-2">
     <div>
       <div class="section-header"><h2>Spending by category</h2></div>
-      <div class="card">
-        <div style="display:flex; flex-direction:column; gap:14px;">
-          <div>
-            <div class="cat-meta"><span style="font-weight:500;">Housing</span><span style="color:var(--text2);">$900 / $900</span></div>
-            <div class="progress-track"><div class="progress-fill red" style="width:100%"></div></div>
-          </div>
-          <div>
-            <div class="cat-meta"><span style="font-weight:500;">Food & Groceries</span><span style="color:var(--text2);">$180 / $300</span></div>
-            <div class="progress-track"><div class="progress-fill" style="width:60%"></div></div>
-          </div>
-          <div>
-            <div class="cat-meta"><span style="font-weight:500;">Transport</span><span style="color:var(--text2);">$48 / $150</span></div>
-            <div class="progress-track"><div class="progress-fill" style="width:32%"></div></div>
-          </div>
-          <div>
-            <div class="cat-meta"><span style="font-weight:500;">Subscriptions</span><span style="color:var(--text2);">$38 / $60</span></div>
-            <div class="progress-track"><div class="progress-fill amber" style="width:63%"></div></div>
-          </div>
-          <div>
-            <div class="cat-meta"><span style="font-weight:500;">Entertainment</span><span style="color:var(--text2);">$0 / $200</span></div>
-            <div class="progress-track"><div class="progress-fill" style="width:0%"></div></div>
-          </div>
-        </div>
+      <div class="card" id="spending-cats">
+        <div class="empty-state">No expenses yet this month.<br><a href="expenses.html">Add your first expense →</a></div>
       </div>
     </div>
-
     <div>
       <div class="section-header">
         <h2>Upcoming bills</h2>
         <a href="bills.html" class="btn btn-outline btn-sm">View all bills</a>
       </div>
-      <div class="card">
-        <div style="display:flex; flex-direction:column; gap:12px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:12px; border-bottom:1px solid var(--bg2);">
-            <div><div style="font-weight:500; font-size:13px;">Car Payment</div><div style="font-size:12px; color:var(--text3);">Due May 8</div></div>
-            <div style="display:flex; align-items:center; gap:8px;"><span style="font-weight:600;">$1,015</span><span class="badge badge-red">Due soon</span></div>
-          </div>
-          <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:12px; border-bottom:1px solid var(--bg2);">
-            <div><div style="font-weight:500; font-size:13px;">Cell Phone</div><div style="font-size:12px; color:var(--text3);">Due May 15</div></div>
-            <div style="display:flex; align-items:center; gap:8px;"><span style="font-weight:600;">$160</span><span class="badge badge-amber">Upcoming</span></div>
-          </div>
-          <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:12px; border-bottom:1px solid var(--bg2);">
-            <div><div style="font-weight:500; font-size:13px;">Internet + Insurance</div><div style="font-size:12px; color:var(--text3);">Due May 21</div></div>
-            <div style="display:flex; align-items:center; gap:8px;"><span style="font-weight:600;">$562</span><span class="badge badge-gray">Later</span></div>
-          </div>
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div><div style="font-weight:500; font-size:13px;">Diapers · Tithe · Gas · Groceries</div><div style="font-size:12px; color:var(--text3);">Floating — no fixed date</div></div>
-            <div style="display:flex; align-items:center; gap:8px;"><span style="font-weight:600;">$1,890</span><span class="badge badge-gray">Estimated</span></div>
-          </div>
-        </div>
+      <div class="card" id="upcoming-bills">
+        <div class="empty-state">No bills set up yet.<br><a href="bills.html">Add your bills →</a></div>
       </div>
     </div>
   </div>
@@ -130,29 +80,18 @@
   <div class="grid-2" style="margin-bottom:24px;">
     <div class="card">
       <div class="card-title">Debt by group</div>
-      <div class="chart-wrap">
-        <canvas id="debtChart"></canvas>
+      <div class="chart-wrap"><canvas id="debtChart"></canvas></div>
+      <div class="debt-legend" id="debt-legend">
+        <div class="empty-state" style="padding:12px;">No debt records yet.<br><a href="debt.html">Add debts →</a></div>
       </div>
-      <div class="debt-legend" id="debt-legend"></div>
     </div>
     <div style="display:flex; flex-direction:column; gap:14px;">
-      <div class="card">
-        <div class="card-title">Total debt</div>
-        <div class="card-value red">$66,283</div>
-        <div class="card-sub">Across 22 accounts</div>
-      </div>
-      <div class="card">
-        <div class="card-title">Excl. car loan</div>
-        <div class="card-value amber">$20,035</div>
-        <div class="card-sub">21 collection accounts</div>
-      </div>
-      <div class="card" style="background:var(--green-l); border-color:var(--green-m);">
+      <div class="card"><div class="card-title">Total debt</div><div class="card-value red" id="total-debt">$0</div><div class="card-sub" id="debt-sub">No accounts yet</div></div>
+      <div class="card"><div class="card-title">Excl. car loan</div><div class="card-value amber" id="excl-debt">$0</div><div class="card-sub">Collection accounts</div></div>
+      <div class="card" style="background:var(--green-l); border-color:var(--green-m);" id="snowball-card">
         <div class="card-title" style="color:var(--green);">❄️ Snowball target</div>
-        <div class="card-value green">$144</div>
-        <div class="card-sub">WEBBANK/FINGERHUT — pay this first</div>
-        <div class="progress-wrap" style="margin-top:10px;">
-          <div class="progress-track"><div class="progress-fill" style="width:0%"></div></div>
-        </div>
+        <div class="card-value green" id="snowball-amt">—</div>
+        <div class="card-sub" id="snowball-name">No active debts</div>
       </div>
     </div>
   </div>
@@ -163,88 +102,184 @@
     <a href="expenses.html" class="btn btn-outline btn-sm">View all</a>
   </div>
   <div class="card">
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th><th>Category</th><th>Date</th><th style="text-align:right;">Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td style="font-weight:500;">Groceries — Trader Joe's</td>
-            <td><span class="badge badge-green">Food</span></td>
-            <td style="color:var(--text3);">May 12</td>
-            <td style="text-align:right; font-weight:600;">$67.40</td>
-          </tr>
-          <tr>
-            <td style="font-weight:500;">Gas</td>
-            <td><span class="badge badge-amber">Transport</span></td>
-            <td style="color:var(--text3);">May 10</td>
-            <td style="text-align:right; font-weight:600;">$48.00</td>
-          </tr>
-          <tr>
-            <td style="font-weight:500;">Netflix</td>
-            <td><span class="badge badge-gray">Subscription</span></td>
-            <td style="color:var(--text3);">May 1</td>
-            <td style="text-align:right; font-weight:600;">$18.00</td>
-          </tr>
-          <tr>
-            <td style="font-weight:500;">Rent</td>
-            <td><span class="badge badge-red">Housing</span></td>
-            <td style="color:var(--text3);">May 1</td>
-            <td style="text-align:right; font-weight:600;">$900.00</td>
-          </tr>
-        </tbody>
-      </table>
+    <div id="recent-expenses">
+      <div class="empty-state">No expenses yet.<br><a href="expenses.html">Add your first expense →</a></div>
     </div>
   </div>
 </div>
 
-<script>
-  const debtGroups = [
-    { label: 'Car Loan',       amount: 46248, color: '#c0442a' },
-    { label: 'Credit Cards',   amount: 9726,  color: '#c97b2e' },
-    { label: 'Personal Loans', amount: 5661,  color: '#e8a84a' },
-    { label: 'Other',          amount: 4648,  color: '#b8dcc8' },
-  ];
+<script type="module">
+  // Wait for auth guard to set session
+  await new Promise(r => setTimeout(r, 300));
+  const db   = window.__supabaseClient;
+  const session = window.__supabaseSession;
+  if (!db || !session) { window.location.replace('login.html'); }
 
-  const total = debtGroups.reduce((s, d) => s + d.amount, 0);
+  const user = session.user;
+  const name = user.user_metadata?.full_name || user.email.split('@')[0];
 
-  new Chart(document.getElementById('debtChart').getContext('2d'), {
-    type: 'doughnut',
-    data: {
-      labels: debtGroups.map(d => d.label),
-      datasets: [{
-        data: debtGroups.map(d => d.amount),
-        backgroundColor: debtGroups.map(d => d.color),
-        borderWidth: 3,
-        borderColor: '#ffffff',
-        hoverOffset: 6,
-      }]
-    },
-    options: {
-      cutout: '68%',
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: ctx => ` $${ctx.raw.toLocaleString()} (${((ctx.raw / total) * 100).toFixed(1)}%)`
-          }
-        }
-      }
+  // Greeting
+  const hour = new Date().getHours();
+  const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  document.getElementById('greeting').textContent = `${greet}, ${name} ☁️`;
+
+  // Month display
+  let currentDate = new Date();
+  window.changeMonth = (dir) => {
+    currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + dir, 1);
+    loadData();
+  };
+
+  function updateMonthLabel() {
+    document.getElementById('month-label').textContent = currentDate.toLocaleDateString('en-US', { month:'long', year:'numeric' });
+  }
+
+  async function loadData() {
+    updateMonthLabel();
+    const uid = window.VIEWING_USER_ID || user.id;
+    const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString().slice(0,10);
+    const monthEnd   = new Date(currentDate.getFullYear(), currentDate.getMonth()+1, 0).toISOString().slice(0,10);
+
+    // Load expenses
+    const { data: expenses } = await db.from('expenses')
+      .select('*').eq('user_id', uid)
+      .gte('date', monthStart).lte('date', monthEnd);
+
+    // Load bills
+    const { data: bills } = await db.from('bills').select('*').eq('user_id', uid);
+
+    // Load debts
+    const { data: debts } = await db.from('debts').select('*').eq('user_id', uid).eq('settled', false);
+
+    // Load budget for this month
+    const { data: budgets } = await db.from('budgets').select('*').eq('user_id', uid)
+      .eq('period', `${currentDate.getFullYear()}-${String(currentDate.getMonth()+1).padStart(2,'0')}`);
+
+    renderBudgetCards(expenses||[], budgets?.[0]||null);
+    renderSpendingCats(expenses||[]);
+    renderUpcomingBills(bills||[]);
+    renderDebtSnapshot(debts||[]);
+    renderRecentExpenses(expenses||[]);
+  }
+
+  function fmt(n) { return '$' + Math.round(n).toLocaleString(); }
+
+  function renderBudgetCards(expenses, budget) {
+    const spent     = expenses.reduce((s,e)=>s+parseFloat(e.amount),0);
+    const limit     = budget?.total_limit || 0;
+    const remaining = limit - spent;
+    const pct       = limit > 0 ? Math.min(100, Math.round((spent/limit)*100)) : 0;
+
+    document.getElementById('card-budget').textContent    = limit > 0 ? fmt(limit) : 'Not set';
+    document.getElementById('card-budget-sub').textContent = limit > 0 ? `Set for ${currentDate.toLocaleDateString('en-US',{month:'long',year:'numeric'})}` : 'Go to Settings to set a budget';
+    document.getElementById('card-spent').textContent     = fmt(spent);
+    document.getElementById('card-spent-sub').textContent = `${pct}% of budget used`;
+    document.getElementById('spend-bar').style.width      = pct + '%';
+    document.getElementById('card-remaining').textContent = fmt(remaining);
+    document.getElementById('card-remaining-sub').textContent = `${new Date(currentDate.getFullYear(), currentDate.getMonth()+1,0).getDate() - new Date().getDate()} days left this month`;
+
+    const tipEl = document.getElementById('tip-text');
+    if (spent === 0) {
+      tipEl.innerHTML = `<strong>Welcome, ${name}!</strong> Start by adding your expenses and bills to see your budget come to life.`;
+    } else if (pct > 80) {
+      tipEl.innerHTML = `<strong>Heads up!</strong> You've used ${pct}% of your budget with ${new Date().getDate()} days into the month. Watch your spending closely.`;
+    } else {
+      tipEl.innerHTML = `<strong>You're on track.</strong> You've spent ${fmt(spent)} so far this month with ${fmt(Math.max(0,remaining))} remaining.`;
     }
-  });
+  }
 
-  document.getElementById('debt-legend').innerHTML = debtGroups.map(d => `
-    <div class="debt-leg-item">
-      <div class="debt-leg-left">
-        <div class="debt-leg-dot" style="background:${d.color};"></div>
-        <span style="color:var(--text2);">${d.label}</span>
-      </div>
-      <span style="font-weight:600; color:var(--text);">$${d.amount.toLocaleString()}</span>
-    </div>
-  `).join('');
+  function renderSpendingCats(expenses) {
+    if (!expenses.length) return;
+    const cats = {};
+    expenses.forEach(e => { cats[e.category||'Other'] = (cats[e.category||'Other']||0) + parseFloat(e.amount); });
+    const max = Math.max(...Object.values(cats));
+    const colors = { Housing:'red', Food:'green', Transport:'amber', Subscriptions:'amber', Entertainment:'gray', Health:'green', Giving:'green', Other:'gray' };
+    document.getElementById('spending-cats').innerHTML = `<div style="display:flex;flex-direction:column;gap:14px;">` +
+      Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([cat,amt]) => `
+        <div>
+          <div class="cat-meta"><span style="font-weight:500;">${cat}</span><span style="color:var(--text2);">${fmt(amt)}</span></div>
+          <div class="progress-track"><div class="progress-fill ${colors[cat]||''}" style="width:${Math.round((amt/max)*100)}%"></div></div>
+        </div>`).join('') + `</div>`;
+  }
+
+  function renderUpcomingBills(bills) {
+    const today = new Date().getDate();
+    const upcoming = bills.filter(b => b.due_day && !b.paid).sort((a,b) => {
+      const da = a.due_day >= today ? a.due_day : a.due_day + 31;
+      const db = b.due_day >= today ? b.due_day : b.due_day + 31;
+      return da - db;
+    }).slice(0,4);
+    if (!upcoming.length) return;
+    document.getElementById('upcoming-bills').innerHTML = `<div style="display:flex;flex-direction:column;gap:12px;">` +
+      upcoming.map(b => {
+        const daysUntil = b.due_day - today;
+        const badge = daysUntil <= 3 ? 'badge-red' : daysUntil <= 7 ? 'badge-amber' : 'badge-gray';
+        const label = daysUntil <= 0 ? 'Due today' : daysUntil === 1 ? '1 day' : `${daysUntil} days`;
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--bg2);">
+          <div><div style="font-weight:500;font-size:13px;">${b.name}</div><div style="font-size:12px;color:var(--text3);">Due ${b.due_day}${b.due_day===1?'st':b.due_day===2?'nd':b.due_day===3?'rd':'th'}</div></div>
+          <div style="display:flex;align-items:center;gap:8px;"><span style="font-weight:600;">$${parseFloat(b.amount).toLocaleString()}</span><span class="badge ${badge}">${label}</span></div>
+        </div>`;
+      }).join('') + `</div>`;
+  }
+
+  function renderDebtSnapshot(debts) {
+    const total   = debts.reduce((s,d)=>s+parseFloat(d.balance),0);
+    const carLoan = debts.find(d=>d.name.toLowerCase().includes('car'));
+    const excl    = total - (carLoan ? parseFloat(carLoan.balance) : 0);
+    const sorted  = [...debts].sort((a,b)=>parseFloat(a.balance)-parseFloat(b.balance));
+    const target  = sorted[0];
+
+    document.getElementById('total-debt').textContent = fmt(total);
+    document.getElementById('debt-sub').textContent   = `${debts.length} account${debts.length!==1?'s':''}`;
+    document.getElementById('excl-debt').textContent  = fmt(excl);
+
+    if (target) {
+      document.getElementById('snowball-amt').textContent  = fmt(parseFloat(target.balance));
+      document.getElementById('snowball-name').textContent = target.name + ' — pay this first';
+    }
+
+    if (!debts.length) return;
+
+    // Group for chart
+    const groups = [
+      { label:'Car Loan',       amount: carLoan ? parseFloat(carLoan.balance) : 0, color:'#c0442a' },
+      { label:'Other debts',    amount: excl,                                       color:'#c97b2e' },
+    ].filter(g=>g.amount>0);
+
+    new Chart(document.getElementById('debtChart').getContext('2d'), {
+      type:'doughnut',
+      data:{ labels:groups.map(g=>g.label), datasets:[{ data:groups.map(g=>g.amount), backgroundColor:groups.map(g=>g.color), borderWidth:3, borderColor:'#fff', hoverOffset:6 }] },
+      options:{ cutout:'68%', plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>` $${c.raw.toLocaleString()}`}} } }
+    });
+
+    document.getElementById('debt-legend').innerHTML = groups.map(g=>
+      `<div class="debt-leg-item"><div class="debt-leg-left"><div class="debt-leg-dot" style="background:${g.color};"></div><span style="color:var(--text2);">${g.label}</span></div><span style="font-weight:600;">${fmt(g.amount)}</span></div>`
+    ).join('');
+  }
+
+  function renderRecentExpenses(expenses) {
+    if (!expenses.length) return;
+    const recent = [...expenses].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,5);
+    const catBadge = { Housing:'badge-red', Food:'badge-green', Transport:'badge-amber', Subscriptions:'badge-gray', Other:'badge-gray' };
+    document.getElementById('recent-expenses').innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Name</th><th>Category</th><th>Date</th><th style="text-align:right;">Amount</th></tr></thead>
+          <tbody>${recent.map(e=>`
+            <tr>
+              <td style="font-weight:500;">${e.name}</td>
+              <td><span class="badge ${catBadge[e.category]||'badge-gray'}">${e.category||'Other'}</span></td>
+              <td style="color:var(--text3);">${new Date(e.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</td>
+              <td style="text-align:right;font-weight:600;">$${parseFloat(e.amount).toFixed(2)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  // Show page and load
+  document.getElementById('main-content').style.display = 'block';
+  loadData();
 </script>
 
 </body>
