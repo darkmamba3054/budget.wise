@@ -63,8 +63,15 @@ document.addEventListener('DOMContentLoaded', async function() {
         <div style="width:32px;height:32px;border-radius:50%;background:var(--green);color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;">${initials}</div>
         <span style="font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;">${name}</span>
         <a href="settings.html" style="font-size:12px;color:var(--text2);text-decoration:none;margin-left:4px;">⚙️</a>
+        <a href="#" onclick="navSignOut()" style="font-size:12px;color:var(--red);text-decoration:none;margin-left:4px;font-weight:500;">Sign out</a>
       </div>
     `;
+
+    window.navSignOut = function() {
+      db.auth.signOut().then(function() {
+        window.location.href = 'login.html';
+      });
+    };
   } catch(e) {
     console.error('Nav error:', e);
   }
