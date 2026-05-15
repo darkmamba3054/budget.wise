@@ -6,6 +6,10 @@
   <title>Sign In — BudgetWise</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script>
+    // The UMD build exposes itself as window.supabase
+    console.log('Supabase loaded:', typeof window.supabase, typeof window.supabasejs);
+  </script>
   <script src="supabase.js"></script>
   <style>
     body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); }
@@ -120,7 +124,7 @@
   }
 
   // Init Supabase immediately — not inside DOMContentLoaded
-  var db = supabasejs.createClient(SUPABASE_URL, SUPABASE_KEY);
+  var db = (window.supabase || window.supabasejs).createClient(SUPABASE_URL, SUPABASE_KEY);
 
   document.addEventListener('DOMContentLoaded', function() {
 
@@ -168,16 +172,20 @@
     var password = document.getElementById('su-password').value;
     var confirm  = document.getElementById('su-confirm').value;
     var btn      = document.getElementById('su-btn');
+    console.log('doSignUp called', { name, email, db: !!db });
     if (!name || !email || !password) { showMsg('su-msg', 'Please fill in all fields.', 'error'); return; }
     if (password !== confirm)         { showMsg('su-msg', 'Passwords do not match.', 'error'); return; }
     if (password.length < 8)          { showMsg('su-msg', 'Password must be at least 8 characters.', 'error'); return; }
+    if (!db) { showMsg('su-msg', 'Connection error — please refresh the page.', 'error'); return; }
     btn.disabled    = true;
     btn.textContent = 'Creating account...';
+    console.log('Calling db.auth.signUp...');
     db.auth.signUp({
       email: email,
       password: password,
       options: { data: { full_name: name } }
     }).then(function(res) {
+      console.log('signUp response:', res);
       if (res.error) {
         showMsg('su-msg', res.error.message, 'error');
         btn.disabled    = false;
@@ -195,6 +203,11 @@
         btn.textContent = 'Create account';
         setTimeout(function() { showPanel('signin'); }, 2000);
       }
+    }).catch(function(err) {
+      console.error('signUp error:', err);
+      showMsg('su-msg', 'Error: ' + err.message, 'error');
+      btn.disabled    = false;
+      btn.textContent = 'Create account';
     });
   }
 
