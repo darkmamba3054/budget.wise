@@ -108,15 +108,26 @@
 <script>
   const db = supabasejs.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+  // Define switchTab FIRST before anything else calls it
+  window.switchTab = function(tab) {
+    document.querySelectorAll('.auth-tab').forEach((t, i) => {
+      t.classList.toggle('active', ['signin','signup','forgot'][i] === tab);
+    });
+    document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+    document.getElementById('form-' + tab).classList.add('active');
+  };
+
+  window.showForgot = function() { switchTab('forgot'); };
+
   // Check for invite token in URL
-  const params = new URLSearchParams(window.location.search);
+  const params      = new URLSearchParams(window.location.search);
   const inviteToken = params.get('invite');
   const inviterName = params.get('from');
 
   if (inviteToken && inviterName) {
     const banner = document.getElementById('invite-banner');
     banner.style.display = 'block';
-    banner.innerHTML = `<strong>${decodeURIComponent(inviterName)}</strong> has invited you to be their accountability partner on BudgetWise. Create an account below to get started!`;
+    banner.innerHTML = '<strong>' + decodeURIComponent(inviterName) + '</strong> has invited you to be their accountability partner on BudgetWise. Create an account below to get started!';
     switchTab('signup');
     localStorage.setItem('pendingInvite', inviteToken);
     localStorage.setItem('inviterName', decodeURIComponent(inviterName));
@@ -129,17 +140,7 @@
   }
   init();
 
-  window.switchTab = (tab) => {
-    document.querySelectorAll('.auth-tab').forEach((t,i) => {
-      t.classList.toggle('active', ['signin','signup','forgot'][i] === tab);
-    });
-    document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
-    document.getElementById(`form-${tab}`).classList.add('active');
-  };
-
-  window.showForgot = () => switchTab('forgot');
-
-  window.signIn = async () => {
+  window.signIn = async function() {
     const email    = document.getElementById('signin-email').value.trim();
     const password = document.getElementById('signin-password').value;
     const btn      = document.getElementById('signin-btn');
@@ -151,7 +152,7 @@
     window.location.href = 'index.html';
   };
 
-  window.signUp = async () => {
+  window.signUp = async function() {
     const name     = document.getElementById('signup-name').value.trim();
     const email    = document.getElementById('signup-email').value.trim();
     const password = document.getElementById('signup-password').value;
@@ -164,20 +165,17 @@
     btn.disabled = true; btn.textContent = 'Creating account...';
     const { data, error } = await db.auth.signUp({ email, password, options: { data: { full_name: name } } });
     if (error) { showMsg(msg, error.message, 'error'); btn.disabled=false; btn.textContent='Create account'; return; }
-
-    // Handle pending invite
     const pendingInvite = localStorage.getItem('pendingInvite');
     if (pendingInvite && data.user) {
       await db.from('accountability_links').update({ partner_user_id: data.user.id, status:'active' }).eq('invite_token', pendingInvite);
       localStorage.removeItem('pendingInvite');
       localStorage.removeItem('inviterName');
     }
-
     showMsg(msg, 'Account created! Check your email to confirm, then sign in.', 'success');
     btn.disabled = false; btn.textContent = 'Create account';
   };
 
-  window.resetPassword = async () => {
+  window.resetPassword = async function() {
     const email = document.getElementById('forgot-email').value.trim();
     const msg   = document.getElementById('forgot-msg');
     if (!email) { showMsg(msg, 'Please enter your email.', 'error'); return; }
@@ -188,7 +186,7 @@
 
   function showMsg(el, text, type) {
     el.textContent = text;
-    el.className = `auth-msg ${type}`;
+    el.className = 'auth-msg ' + type;
     el.style.display = 'block';
   }
 </script>
