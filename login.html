@@ -119,10 +119,10 @@
     el.style.display = 'block';
   }
 
-  // Init Supabase once DOM is ready
-  var db;
+  // Init Supabase immediately — not inside DOMContentLoaded
+  var db = supabasejs.createClient(SUPABASE_URL, SUPABASE_KEY);
+
   document.addEventListener('DOMContentLoaded', function() {
-    db = supabasejs.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     // Check if already logged in
     db.auth.getSession().then(function(res) {
