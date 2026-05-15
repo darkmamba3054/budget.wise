@@ -89,6 +89,23 @@
         </select>
       </div>
     </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Split across paychecks?</label>
+        <select id="bill-split" onchange="toggleSplitFields()">
+          <option value="No">No — pay all at once</option>
+          <option value="Yes">Yes — split across 2 paychecks</option>
+        </select>
+      </div>
+      <div class="form-group" id="split-days-group" style="display:none;">
+        <label>Split: paycheck 1 on day</label>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input type="number" id="bill-split-p1" placeholder="e.g. 6" min="1" max="31" style="width:80px;">
+          <span style="color:var(--text2); font-size:13px;">and paycheck 2 on day</span>
+          <input type="number" id="bill-split-p2" placeholder="e.g. 21" min="1" max="31" style="width:80px;">
+        </div>
+      </div>
+    </div>
     <button class="btn btn-primary" onclick="addBill()">Add bill</button>
   </div>
 
@@ -104,6 +121,7 @@
             <th>Bill name</th>
             <th>Amount</th>
             <th>Due date</th>
+            <th>Split</th>
             <th>Auto pay</th>
             <th>Frequency</th>
             <th>Category</th>
@@ -131,6 +149,11 @@
     });
   });
 
+  function toggleSplitFields() {
+    var val = document.getElementById('bill-split').value;
+    document.getElementById('split-days-group').style.display = val === 'Yes' ? '' : 'none';
+  }
+
   function loadBills() {
     db.from('bills').select('*').eq('user_id', currentUser.id).order('due_day', { ascending: true, nullsFirst: false })
       .then(function(res) {
@@ -143,7 +166,10 @@
             auto:     b.auto_pay || 'No',
             freq:     b.frequency || 'Monthly',
             category: b.category || 'Other',
-            paid:     b.paid || false
+            paid:     b.paid || false,
+            split:    b.split || false,
+            splitP1:  b.split_p1 || null,
+            splitP2:  b.split_p2 || null,
           };
         });
         renderSummary();
@@ -191,6 +217,7 @@
         '<td style="font-weight:500;">' + b.name + '</td>' +
         '<td style="font-weight:600;">' + fmt(b.amount) + '</td>' +
         '<td>' + dueStr + '</td>' +
+        '<td>' + (b.split ? '<span class="badge badge-amber">Split: ' + (b.splitP1||'?') + 'th / ' + (b.splitP2||'?') + 'th</span>' : '<span style="color:var(--text3);">No</span>') + '</td>' +
         '<td><span class="badge ' + (b.auto==='Yes'?'badge-green':'badge-gray') + '">' + b.auto + '</span></td>' +
         '<td style="color:var(--text2);">' + b.freq + '</td>' +
         '<td><span class="badge ' + catClass + '">' + b.category + '</span></td>' +
@@ -249,13 +276,18 @@
     var auto   = document.getElementById('bill-auto').value;
     var freq   = document.getElementById('bill-freq').value;
     var cat    = document.getElementById('bill-cat').value;
+    var split  = document.getElementById('bill-split').value === 'Yes';
+    var splitP1 = split ? (parseInt(document.getElementById('bill-split-p1').value) || null) : null;
+    var splitP2 = split ? (parseInt(document.getElementById('bill-split-p2').value) || null) : null;
     if (!name || !amount) { alert('Please enter a name and amount.'); return; }
-    db.from('bills').insert({ user_id:currentUser.id, name:name, amount:amount, due_day:due, auto_pay:auto, frequency:freq, category:cat, paid:false }).select()
+    db.from('bills').insert({ user_id:currentUser.id, name:name, amount:amount, due_day:due, auto_pay:auto, frequency:freq, category:cat, paid:false, split:split, split_p1:splitP1, split_p2:splitP2 }).select()
       .then(function(res) {
         if (res.error) { alert('Error adding bill: ' + res.error.message); return; }
         document.getElementById('bill-name').value   = '';
         document.getElementById('bill-amount').value = '';
         document.getElementById('bill-due').value    = '';
+        document.getElementById('bill-split').value  = 'No';
+        document.getElementById('split-days-group').style.display = 'none';
         setTimeout(function() { loadBills(); }, 300);
       });
   }
