@@ -52,6 +52,7 @@
     .msg-ref-name.mine { color: white; }
     .msg-time { font-size: 10px; color: var(--text3); margin-top: 4px; }
     .msg-time.mine { text-align: right; }
+    .msg-receipt { font-size: 10px; color: var(--text3); text-align: right; margin-top: 1px; font-style: italic; }
     .chat-input-area { padding: 14px 18px; border-top: 1px solid var(--border); background: var(--card); }
     .ref-pill { display: inline-flex; align-items: center; gap: 5px; background: var(--bg); border: 1px solid var(--border); border-radius: 99px; padding: 4px 12px; font-size: 12px; color: var(--text2); margin-bottom: 10px; cursor: pointer; transition: all 0.15s; }
     .ref-pill:hover { border-color: var(--green); color: var(--green); }
@@ -187,7 +188,38 @@
   function openThread(idx) {
     activeThread = threads[idx];
     renderThreadList();
-    renderChatArea();
+    loadMessages();
+  }
+
+  function loadMessages() {
+    if (!activeThread) return;
+    db.from('messages').select('*')
+      .eq('thread_id', activeThread.id)
+      .order('created_at', { ascending: true })
+      .then(function(res) {
+        activeThread.messages = (res.data || []).map(function(m) {
+          return {
+            id:        m.id,
+            from:      m.sender_id === currentUser.id ? 'me' : 'them',
+            text:      m.text,
+            ref:       m.ref_type ? { type:m.ref_type, label:m.ref_label } : null,
+            time:      new Date(m.created_at).toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }),
+            readAt:    m.read_at,
+            deliveredAt: m.delivered_at,
+          };
+        });
+
+        // Mark unread messages from partner as read
+        var unread = (res.data || []).filter(function(m) {
+          return m.sender_id !== currentUser.id && !m.read_at;
+        });
+        if (unread.length) {
+          var ids = unread.map(function(m){ return m.id; });
+          db.from('messages').update({ read_at: new Date().toISOString() }).in('id', ids).then(function(){});
+        }
+
+        renderChatArea();
+      });
   }
 
   function renderChatArea() {
@@ -203,12 +235,27 @@
           '<div class="msg-ref-name ' + (isMine?'mine':'') + '">' + m.ref.label + '</div>' +
         '</div>';
       }
+
+      // Read receipt for my messages
+      var receiptHtml = '';
+      if (isMine) {
+        if (m.readAt) {
+          var readTime = new Date(m.readAt).toLocaleString('en-US', { hour:'numeric', minute:'2-digit' });
+          receiptHtml = '<div class="msg-receipt">Seen · ' + readTime + '</div>';
+        } else if (m.deliveredAt) {
+          receiptHtml = '<div class="msg-receipt">Delivered</div>';
+        } else {
+          receiptHtml = '<div class="msg-receipt">Sent</div>';
+        }
+      }
+
       return '<div class="msg-row ' + (isMine?'mine':'') + '">' +
         (!isMine ? '<div class="msg-avatar">' + activeThread.initials + '</div>' : '') +
         '<div class="msg-body">' +
           '<div class="msg-bubble ' + (isMine?'mine':'theirs') + '">' + m.text + '</div>' +
           refHtml +
           '<div class="msg-time ' + (isMine?'mine':'') + '">' + m.time + '</div>' +
+          receiptHtml +
         '</div>' +
       '</div>';
     }).join('');
@@ -248,7 +295,6 @@
         '</div>' +
       '</div>';
 
-    // Scroll to bottom
     var msgs = document.getElementById('chat-messages');
     if (msgs) msgs.scrollTop = msgs.scrollHeight;
   }
@@ -279,28 +325,21 @@
     if (!input) return;
     var text = input.value.trim();
     if (!text) return;
+    input.value = '';
 
-    var now  = new Date().toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
-    var msg  = { from:'me', text:text, ref: selectedRef ? { type:selectedRef.type, label:selectedRef.label } : null, time: now };
-
-    if (!activeThread.messages) activeThread.messages = [];
-    activeThread.messages.push(msg);
-    selectedRef = null;
-
-    // Save to Supabase if real thread
-    if (!activeThread.id.includes('demo')) {
-      db.from('messages').insert({
-        thread_id:   activeThread.id,
-        sender_id:   currentUser.id,
-        text:        text,
-        ref_type:    msg.ref ? msg.ref.type  : null,
-        ref_label:   msg.ref ? msg.ref.label : null,
-        created_at:  new Date().toISOString(),
-      }).then(function(){});
-    }
-
-    renderThreadList();
-    renderChatArea();
+    db.from('messages').insert({
+      thread_id:    activeThread.id,
+      sender_id:    currentUser.id,
+      text:         text,
+      ref_type:     selectedRef ? selectedRef.type  : null,
+      ref_label:    selectedRef ? selectedRef.label : null,
+      created_at:   new Date().toISOString(),
+      delivered_at: new Date().toISOString(),
+    }).select().then(function(res) {
+      if (res.error) { alert('Error sending: ' + res.error.message); return; }
+      selectedRef = null;
+      setTimeout(function() { loadMessages(); }, 300);
+    });
   }
 </script>
 
