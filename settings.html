@@ -58,7 +58,7 @@
   <!-- Accountability partners -->
   <div class="settings-section">
     <h2>Accountability partners</h2>
-    <p>Invite up to 3 people to view your budget and comment on your purchase decisions.</p>
+    <p>Invite up to 3 people to view your budget. Use an invite link for new users or search by email for existing users.</p>
 
     <div style="margin-bottom:16px;">
       <div style="font-size:13px; font-weight:500; color:var(--text2); margin-bottom:4px;">Partners used</div>
@@ -68,9 +68,21 @@
 
     <div id="partners-list" style="margin-bottom:20px;"></div>
 
+    <!-- Add by email -->
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;margin-bottom:16px;">
+      <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px;">Add partner by email</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">Search for someone who already has a CheckMate Budget account.</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="email" id="search-email" placeholder="their@email.com" style="flex:1;padding:8px 12px;font-size:13px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card);color:var(--text);font-family:'DM Sans',sans-serif;outline:none;">
+        <button class="btn btn-primary btn-sm" onclick="searchAndAdd()">Find &amp; Add</button>
+      </div>
+      <div id="search-msg" style="font-size:13px;margin-top:8px;display:none;"></div>
+    </div>
+
+    <!-- Invite link -->
     <div class="invite-box" id="invite-section">
-      <div style="font-size:14px; font-weight:600; color:var(--green); margin-bottom:6px;">Invite a new partner</div>
-      <div style="font-size:13px; color:#2a5c3f; margin-bottom:12px;">Generate a link and share it however you like — text, iMessage, email, etc. Anyone with this link can sign up and connect to your account as an accountability partner.</div>
+      <div style="font-size:14px; font-weight:600; color:var(--green); margin-bottom:6px;">Invite a new partner via link</div>
+      <div style="font-size:13px; color:#2a5c3f; margin-bottom:12px;">Generate a link and share it however you like — text, iMessage, email, etc. Anyone with this link can sign up and connect to your account.</div>
       <button class="btn btn-primary btn-sm" onclick="generateInvite()" id="generate-btn">Generate invite link</button>
       <div id="invite-result" style="display:none; margin-top:12px;">
         <div style="font-size:12px; font-weight:500; color:var(--text2); margin-bottom:4px;">Your invite link — share this:</div>
@@ -80,6 +92,25 @@
           <button class="btn btn-outline btn-sm" onclick="generateInvite()">New link</button>
         </div>
         <div style="font-size:11px; color:var(--text3); margin-top:8px;">This link expires in 7 days. Each link can only be used once.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Permission editor modal -->
+  <div id="perm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;display:none;align-items:center;justify-content:center;">
+    <div style="background:var(--card);border-radius:var(--radius);padding:28px;width:100%;max-width:480px;margin:24px;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <div>
+          <div style="font-family:'DM Serif Display',serif;font-size:20px;" id="perm-title">Edit permissions</div>
+          <div style="font-size:13px;color:var(--text2);margin-top:2px;" id="perm-subtitle"></div>
+        </div>
+        <button onclick="closePermModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text3);">×</button>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;">What can this partner see and do?</div>
+      <div id="perm-toggles" style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-outline" onclick="closePermModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="savePermissions()">Save permissions</button>
       </div>
     </div>
   </div>
@@ -119,7 +150,24 @@
 
 <script>
   var db = (window.supabase || window.supabasejs).createClient(SUPABASE_URL, SUPABASE_KEY);
-  var currentUser = null;
+  var currentUser  = null;
+  var currentLinks = [];
+  var editingLinkId = null;
+
+  var permSections = [
+    { key:'dashboard', label:'Dashboard',       desc:'See budget overview and spending summary' },
+    { key:'bills',     label:'Bills & Expenses', desc:'See bills and monthly expenses' },
+    { key:'debt',      label:'Debt Tracker',     desc:'See debt accounts and snowball progress' },
+    { key:'savings',   label:'Savings Goals',    desc:'See savings goals and progress' },
+    { key:'networth',  label:'Net Worth',         desc:'See assets and liabilities' },
+    { key:'checker',   label:'Purchase Checker', desc:'See and comment on purchase decisions' },
+    { key:'journal',   label:'Journal',          desc:'See monthly notes and event log' },
+  ];
+
+  var defaultPerms = {
+    dashboard:true, bills:true, expenses:true, debt:true,
+    savings:true, networth:true, checker:true, journal:true, messages:true
+  };
 
   document.addEventListener('DOMContentLoaded', function() {
     db.auth.getSession().then(function(res) {
@@ -138,29 +186,39 @@
       .eq('owner_user_id', currentUser.id)
       .eq('status', 'active')
       .then(function(res) {
-        var links = res.data || [];
-        var count = links.length;
+        currentLinks = res.data || [];
+        var count    = currentLinks.length;
         document.getElementById('partner-count').textContent = count + ' / 3';
         document.getElementById('partner-bar').style.width = ((count/3)*100) + '%';
         document.getElementById('generate-btn').disabled = count >= 3;
 
         if (!count) {
-          document.getElementById('partners-list').innerHTML = '<div class="empty-partners">No accountability partners yet. Generate an invite link below to get started.</div>';
-        } else {
-          document.getElementById('partners-list').innerHTML = links.map(function(l) {
-            var partner  = l.partner || {};
-            var meta     = partner.raw_user_meta_data || {};
-            var name     = meta.full_name || partner.email || 'Unknown';
-            var initials = name.split(' ').map(function(w){ return w[0]; }).join('').toUpperCase().slice(0,2);
-            return '<div class="partner-card">' +
-              '<div style="display:flex;align-items:center;gap:12px;">' +
-                '<div class="partner-avatar">' + initials + '</div>' +
-                '<div><div class="partner-name">' + name + '</div><div class="partner-email">' + (partner.email||'') + '</div></div>' +
-              '</div>' +
-              '<button class="btn btn-sm" style="background:var(--red-l);color:var(--red);border:none;" onclick="removePartner(\'' + l.id + '\')">Remove</button>' +
-            '</div>';
-          }).join('');
+          document.getElementById('partners-list').innerHTML = '<div class="empty-partners">No accountability partners yet. Add one below.</div>';
+          return;
         }
+
+        document.getElementById('partners-list').innerHTML = currentLinks.map(function(l) {
+          var partner  = l.partner || {};
+          var meta     = partner.raw_user_meta_data || {};
+          var name     = meta.full_name || partner.email || 'Unknown';
+          var initials = name.split(' ').map(function(w){ return w[0]; }).join('').toUpperCase().slice(0,2);
+          var perms    = l.permissions || defaultPerms;
+          var enabled  = permSections.filter(function(s){ return perms[s.key] !== false; }).length;
+          return '<div class="partner-card">' +
+            '<div style="display:flex;align-items:center;gap:12px;flex:1;">' +
+              '<div class="partner-avatar">' + initials + '</div>' +
+              '<div>' +
+                '<div class="partner-name">' + name + '</div>' +
+                '<div class="partner-email">' + (partner.email||'') + '</div>' +
+                '<div style="font-size:11px;color:var(--text3);margin-top:2px;">' + enabled + ' of ' + permSections.length + ' sections visible</div>' +
+              '</div>' +
+            '</div>' +
+            '<div style="display:flex;gap:6px;">' +
+              '<button class="btn btn-outline btn-sm" onclick="openPermModal(\'' + l.id + '\')">Edit permissions</button>' +
+              '<button class="btn btn-sm" style="background:var(--red-l);color:var(--red);border:none;" onclick="removePartner(\'' + l.id + '\')">Remove</button>' +
+            '</div>' +
+          '</div>';
+        }).join('');
       });
   }
 
@@ -191,6 +249,106 @@
       });
   }
 
+  // Search and add by email
+  window.searchAndAdd = function() {
+    var email = document.getElementById('search-email').value.trim().toLowerCase();
+    if (!email) { showSearchMsg('Please enter an email address.', 'error'); return; }
+    if (email === currentUser.email.toLowerCase()) { showSearchMsg('You cannot add yourself.', 'error'); return; }
+    if (currentLinks.length >= 3) { showSearchMsg('You already have 3 partners — the maximum.', 'error'); return; }
+    var already = currentLinks.some(function(l){ return l.partner && l.partner.email && l.partner.email.toLowerCase() === email; });
+    if (already) { showSearchMsg('This person is already your accountability partner.', 'error'); return; }
+
+    // Find user by searching all active partners and owners in the system
+    // We query accountability_links to find a user with this email
+    // Best approach for plain HTML without RPC: search auth users via a profiles approach
+    // Use a workaround — try to find the user id by checking if they exist in the system
+    db.from('accountability_links')
+      .select('partner:partner_user_id(id, email), owner:owner_user_id(id, email)')
+      .then(function(res) {
+        var allLinks = res.data || [];
+        var found = null;
+
+        // Search through all link users for matching email
+        allLinks.forEach(function(l) {
+          if (l.partner && l.partner.email && l.partner.email.toLowerCase() === email) found = l.partner;
+          if (l.owner   && l.owner.email   && l.owner.email.toLowerCase()   === email) found = l.owner;
+        });
+
+        if (!found) {
+          // Also check if this person is in our own partner list under a different query
+          showSearchMsg('No user found with that email. They may need to sign up first, or use the invite link instead.', 'error');
+          return;
+        }
+
+        // Add them
+        db.from('accountability_links').insert({
+          owner_user_id:   currentUser.id,
+          partner_user_id: found.id,
+          status:          'active',
+          permissions:     defaultPerms
+        }).select().then(function(r) {
+          if (r.error) { showSearchMsg('Error: ' + r.error.message, 'error'); return; }
+          document.getElementById('search-email').value = '';
+          showSearchMsg('Partner added successfully!', 'success');
+          setTimeout(loadPartners, 300);
+        });
+      });
+  };
+
+  function showSearchMsg(text, type) {
+    var msg = document.getElementById('search-msg');
+    msg.style.display = 'block';
+    msg.style.color   = type === 'error' ? 'var(--red)' : 'var(--green)';
+    msg.textContent   = text;
+  }
+
+  // Permission modal
+  window.openPermModal = function(linkId) {
+    editingLinkId  = linkId;
+    var link       = currentLinks.find(function(l){ return l.id === linkId; });
+    var partner    = link && link.partner ? link.partner : {};
+    var meta       = partner.raw_user_meta_data || {};
+    var name       = meta.full_name || partner.email || 'Partner';
+    var perms      = link.permissions || defaultPerms;
+
+    document.getElementById('perm-title').textContent    = 'Edit permissions';
+    document.getElementById('perm-subtitle').textContent = 'What can ' + name + ' see?';
+
+    document.getElementById('perm-toggles').innerHTML = permSections.map(function(s) {
+      var enabled = perms[s.key] !== false;
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg);border-radius:var(--radius-sm);">' +
+        '<div><div style="font-weight:500;font-size:13px;">' + s.label + '</div>' +
+        '<div style="font-size:11px;color:var(--text3);margin-top:1px;">' + s.desc + '</div></div>' +
+        '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;">' +
+          '<input type="checkbox" id="perm-' + s.key + '" ' + (enabled?'checked':'') + ' style="width:16px;height:16px;accent-color:var(--green);cursor:pointer;" onchange="this.nextElementSibling.textContent=this.checked?\'Visible\':\'Hidden\'">' +
+          '<span style="font-size:12px;color:var(--text2);min-width:40px;">' + (enabled?'Visible':'Hidden') + '</span>' +
+        '</label>' +
+      '</div>';
+    }).join('') +
+    '<div style="font-size:12px;color:var(--text3);padding:8px 14px;background:var(--green-l);border-radius:var(--radius-sm);">💬 Messages are always on.</div>';
+
+    document.getElementById('perm-modal').style.display = 'flex';
+  };
+
+  window.closePermModal = function() {
+    document.getElementById('perm-modal').style.display = 'none';
+    editingLinkId = null;
+  };
+
+  window.savePermissions = function() {
+    var perms = { messages: true };
+    permSections.forEach(function(s) {
+      var cb = document.getElementById('perm-' + s.key);
+      perms[s.key] = cb ? cb.checked : true;
+    });
+    db.from('accountability_links').update({ permissions: perms }).eq('id', editingLinkId)
+      .then(function(res) {
+        if (res.error) { alert('Error saving: ' + res.error.message); return; }
+        closePermModal();
+        setTimeout(loadPartners, 300);
+      });
+  };
+
   window.generateInvite = function() {
     var token = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, function(c) {
       return (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16);
@@ -199,7 +357,8 @@
     db.from('accountability_links').insert({
       owner_user_id: currentUser.id,
       invite_token:  token,
-      status:        'pending'
+      status:        'pending',
+      permissions:   defaultPerms
     }).then(function(res) {
       if (res.error) { alert('Error generating invite: ' + res.error.message); return; }
       var link = window.location.origin + '/login.html?invite=' + token + '&from=' + name;

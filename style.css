@@ -118,6 +118,7 @@ nav {
   min-width: 180px;
   padding: 6px;
   z-index: 200;
+  margin-top: 4px;
 }
 
 /* Invisible bridge so mouse can move from button to dropdown */
@@ -127,7 +128,7 @@ nav {
   top: 100%;
   left: 0;
   width: 100%;
-  height: 8px;
+  height: 12px;
   display: none;
 }
 
@@ -190,7 +191,7 @@ nav {
 .nav-user-menu {
   display: none;
   position: absolute;
-  top: calc(100% + 4px);
+  top: 100%;
   right: 0;
   background: var(--card);
   border: 1px solid var(--border);
@@ -199,6 +200,7 @@ nav {
   min-width: 160px;
   padding: 6px;
   z-index: 200;
+  margin-top: 4px;
 }
 
 /* Invisible bridge so mouse can move from button to menu */
@@ -208,7 +210,7 @@ nav {
   top: 100%;
   right: 0;
   width: 160px;
-  height: 8px;
+  height: 12px;
   display: none;
 }
 
