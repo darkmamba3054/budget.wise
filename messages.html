@@ -338,7 +338,7 @@
     }).select().then(function(res) {
       if (res.error) { alert('Error sending: ' + res.error.message); return; }
       selectedRef = null;
-      setTimeout(function() { loadMessages(); }, 300);
+      setTimeout(function() { loadMessages(); }, 100);
     });
   }
 </script>
