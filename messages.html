@@ -44,12 +44,14 @@
     .msg-bubble { padding: 10px 14px; border-radius: 16px; font-size: 13px; line-height: 1.55; }
     .msg-bubble.theirs { background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 16px 16px 16px 4px; }
     .msg-bubble.mine { background: var(--green); color: white; border-radius: 16px 16px 4px 16px; }
-    .msg-ref { margin-top: 6px; border-radius: var(--radius-sm); padding: 8px 10px; font-size: 12px; cursor: pointer; border: 1px solid var(--border); background: var(--card); }
-    .msg-ref.mine { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.25); }
+    .msg-bubble.theirs.has-ref { border-radius: 16px 16px 0 4px; }
+    .msg-bubble.mine.has-ref { border-radius: 16px 16px 0 16px; }
+    .msg-ref { margin-top: -6px; border-radius: 0 0 12px 12px; padding: 7px 12px; font-size: 12px; border: 1px solid var(--border); border-top: none; background: var(--bg2); max-width: 260px; }
+    .msg-ref.mine { background: rgba(0,0,0,0.15); border-color: rgba(255,255,255,0.1); margin-left: auto; }
     .msg-ref-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
-    .msg-ref-label.mine { color: rgba(255,255,255,0.65); }
-    .msg-ref-name { font-weight: 500; color: var(--text); }
-    .msg-ref-name.mine { color: white; }
+    .msg-ref-label.mine { color: rgba(255,255,255,0.6); }
+    .msg-ref-name { font-weight: 600; color: var(--text); font-size: 12px; }
+    .msg-ref-name.mine { color: rgba(255,255,255,0.9); }
     .msg-time { font-size: 10px; color: var(--text3); margin-top: 4px; }
     .msg-time.mine { text-align: right; }
     .msg-receipt { font-size: 10px; color: var(--text3); text-align: right; margin-top: 1px; font-style: italic; }
@@ -252,8 +254,13 @@
       return '<div class="msg-row ' + (isMine?'mine':'') + '">' +
         (!isMine ? '<div class="msg-avatar">' + activeThread.initials + '</div>' : '') +
         '<div class="msg-body">' +
-          '<div class="msg-bubble ' + (isMine?'mine':'theirs') + '">' + m.text + '</div>' +
-          refHtml +
+          '<div class="msg-bubble ' + (isMine?'mine':'theirs') + (m.ref?' has-ref':'') + '">' + m.text + '</div>' +
+          (m.ref ?
+            '<div class="msg-ref ' + (isMine?'mine':'') + '">' +
+              '<div class="msg-ref-label ' + (isMine?'mine':'') + '">📎 ' + m.ref.type + '</div>' +
+              '<div class="msg-ref-name ' + (isMine?'mine':'') + '">' + m.ref.label + '</div>' +
+            '</div>'
+          : '') +
           '<div class="msg-time ' + (isMine?'mine':'') + '">' + m.time + '</div>' +
           receiptHtml +
         '</div>' +
@@ -327,34 +334,44 @@
     if (!text) return;
     input.value = '';
 
-    // Show message instantly in UI
-    var now = new Date();
-    var timeStr = now.toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
-    if (!activeThread.messages) activeThread.messages = [];
-    activeThread.messages.push({
-      id: 'pending-' + Date.now(),
-      from: 'me',
-      text: text,
-      ref: selectedRef ? { type:selectedRef.type, label:selectedRef.label } : null,
-      time: timeStr,
-      readAt: null,
-      deliveredAt: null,
-    });
+    // Capture ref BEFORE clearing
+    var ref = selectedRef ? { type:selectedRef.type, label:selectedRef.label } : null;
     selectedRef = null;
-    renderChatArea();
 
-    // Save to Supabase in background then reload to get real ID + delivered status
+    // Show message instantly by appending directly to chat
+    var now     = new Date();
+    var timeStr = now.toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+    var msgs    = document.getElementById('chat-messages');
+    if (msgs) {
+      var div = document.createElement('div');
+      div.className = 'msg-row mine';
+      div.innerHTML =
+        '<div class="msg-body">' +
+          '<div class="msg-bubble mine' + (ref?' has-ref':'') + '">' + text + '</div>' +
+          (ref ? '<div class="msg-ref mine"><div class="msg-ref-label mine">📎 ' + ref.type + '</div><div class="msg-ref-name mine">' + ref.label + '</div></div>' : '') +
+          '<div class="msg-time mine">' + timeStr + '</div>' +
+          '<div class="msg-receipt">Sending...</div>' +
+        '</div>';
+      msgs.appendChild(div);
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    // Update ref pill
+    var pill = document.getElementById('ref-pill');
+    if (pill) { pill.className = 'ref-pill'; pill.innerHTML = '🔗 Reference a budget item ▾'; pill.onclick = togglePicker; }
+
+    // Save to Supabase then reload
     db.from('messages').insert({
       thread_id:    activeThread.id,
       sender_id:    currentUser.id,
       text:         text,
-      ref_type:     selectedRef ? selectedRef.type  : null,
-      ref_label:    selectedRef ? selectedRef.label : null,
+      ref_type:     ref ? ref.type  : null,
+      ref_label:    ref ? ref.label : null,
       created_at:   now.toISOString(),
       delivered_at: now.toISOString(),
     }).select().then(function(res) {
       if (res.error) { alert('Error sending: ' + res.error.message); return; }
-      loadMessages(); // refresh to replace pending message with real one
+      loadMessages();
     });
   }
 </script>
