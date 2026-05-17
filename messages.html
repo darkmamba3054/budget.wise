@@ -327,18 +327,34 @@
     if (!text) return;
     input.value = '';
 
+    // Show message instantly in UI
+    var now = new Date();
+    var timeStr = now.toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+    if (!activeThread.messages) activeThread.messages = [];
+    activeThread.messages.push({
+      id: 'pending-' + Date.now(),
+      from: 'me',
+      text: text,
+      ref: selectedRef ? { type:selectedRef.type, label:selectedRef.label } : null,
+      time: timeStr,
+      readAt: null,
+      deliveredAt: null,
+    });
+    selectedRef = null;
+    renderChatArea();
+
+    // Save to Supabase in background then reload to get real ID + delivered status
     db.from('messages').insert({
       thread_id:    activeThread.id,
       sender_id:    currentUser.id,
       text:         text,
       ref_type:     selectedRef ? selectedRef.type  : null,
       ref_label:    selectedRef ? selectedRef.label : null,
-      created_at:   new Date().toISOString(),
-      delivered_at: new Date().toISOString(),
+      created_at:   now.toISOString(),
+      delivered_at: now.toISOString(),
     }).select().then(function(res) {
       if (res.error) { alert('Error sending: ' + res.error.message); return; }
-      selectedRef = null;
-      setTimeout(function() { loadMessages(); }, 100);
+      loadMessages(); // refresh to replace pending message with real one
     });
   }
 </script>
