@@ -182,7 +182,7 @@
 
   function loadPartners() {
     db.from('accountability_links')
-      .select('*, partner:partner_user_id(id, email, raw_user_meta_data)')
+      .select('*')
       .eq('owner_user_id', currentUser.id)
       .eq('status', 'active')
       .then(function(res) {
@@ -197,55 +197,68 @@
           return;
         }
 
-        document.getElementById('partners-list').innerHTML = currentLinks.map(function(l) {
-          var partner  = l.partner || {};
-          var meta     = partner.raw_user_meta_data || {};
-          var name     = meta.full_name || partner.email || 'Unknown';
-          var initials = name.split(' ').map(function(w){ return w[0]; }).join('').toUpperCase().slice(0,2);
-          var perms    = l.permissions || defaultPerms;
-          var enabled  = permSections.filter(function(s){ return perms[s.key] !== false; }).length;
-          return '<div class="partner-card">' +
-            '<div style="display:flex;align-items:center;gap:12px;flex:1;">' +
-              '<div class="partner-avatar">' + initials + '</div>' +
-              '<div>' +
-                '<div class="partner-name">' + name + '</div>' +
-                '<div class="partner-email">' + (partner.email||'') + '</div>' +
-                '<div style="font-size:11px;color:var(--text3);margin-top:2px;">' + enabled + ' of ' + permSections.length + ' sections visible</div>' +
-              '</div>' +
-            '</div>' +
-            '<div style="display:flex;gap:6px;">' +
-              '<button class="btn btn-outline btn-sm" onclick="openPermModal(\'' + l.id + '\')">Edit permissions</button>' +
-              '<button class="btn btn-sm" style="background:var(--red-l);color:var(--red);border:none;" onclick="removePartner(\'' + l.id + '\')">Remove</button>' +
-            '</div>' +
-          '</div>';
-        }).join('');
+        // Load partner details via RPC
+        var partnerIds = currentLinks.map(function(l){ return l.partner_user_id; }).filter(Boolean);
+        db.rpc('get_users_by_ids', { user_ids: partnerIds })
+          .then(function(r) {
+            var users = {};
+            (r.data || []).forEach(function(u){ users[u.id] = u; });
+
+            document.getElementById('partners-list').innerHTML = currentLinks.map(function(l) {
+              var user     = users[l.partner_user_id] || {};
+              var name     = user.full_name || user.email || 'Unknown';
+              var email    = user.email || '';
+              var initials = name.split(' ').map(function(w){ return w[0]; }).join('').toUpperCase().slice(0,2);
+              var perms    = l.permissions || defaultPerms;
+              var enabled  = permSections.filter(function(s){ return perms[s.key] !== false; }).length;
+              return '<div class="partner-card">' +
+                '<div style="display:flex;align-items:center;gap:12px;flex:1;">' +
+                  '<div class="partner-avatar">' + initials + '</div>' +
+                  '<div>' +
+                    '<div class="partner-name">' + name + '</div>' +
+                    '<div class="partner-email">' + email + '</div>' +
+                    '<div style="font-size:11px;color:var(--text3);margin-top:2px;">' + enabled + ' of ' + permSections.length + ' sections visible</div>' +
+                  '</div>' +
+                '</div>' +
+                '<div style="display:flex;gap:6px;">' +
+                  '<button class="btn btn-outline btn-sm" onclick="openPermModal(\'' + l.id + '\')">Edit permissions</button>' +
+                  '<button class="btn btn-sm" style="background:var(--red-l);color:var(--red);border:none;" onclick="removePartner(\'' + l.id + '\')">Remove</button>' +
+                '</div>' +
+              '</div>';
+            }).join('');
+          });
       });
   }
 
   function loadGranted() {
     db.from('accountability_links')
-      .select('*, owner:owner_user_id(id, email, raw_user_meta_data)')
+      .select('*')
       .eq('partner_user_id', currentUser.id)
       .eq('status', 'active')
       .then(function(res) {
         var links = res.data || [];
         if (!links.length) {
           document.getElementById('granted-list').innerHTML = '<div class="empty-partners">No one has granted you access yet.</div>';
-        } else {
-          document.getElementById('granted-list').innerHTML = links.map(function(l) {
-            var owner    = l.owner || {};
-            var meta     = owner.raw_user_meta_data || {};
-            var name     = meta.full_name || owner.email || 'Unknown';
-            var initials = name.split(' ').map(function(w){ return w[0]; }).join('').toUpperCase().slice(0,2);
-            return '<div class="partner-card">' +
-              '<div style="display:flex;align-items:center;gap:12px;">' +
-                '<div class="partner-avatar" style="background:var(--amber);">' + initials + '</div>' +
-                '<div><div class="partner-name">' + name + '</div><div class="partner-email">You can view their budget</div></div>' +
-              '</div>' +
-              '<span class="badge badge-green">Active</span>' +
-            '</div>';
-          }).join('');
+          return;
         }
+        var ownerIds = links.map(function(l){ return l.owner_user_id; }).filter(Boolean);
+        db.rpc('get_users_by_ids', { user_ids: ownerIds })
+          .then(function(r) {
+            var users = {};
+            (r.data || []).forEach(function(u){ users[u.id] = u; });
+            document.getElementById('granted-list').innerHTML = links.map(function(l) {
+              var user     = users[l.owner_user_id] || {};
+              var name     = user.full_name || user.email || 'Unknown';
+              var initials = name.split(' ').map(function(w){ return w[0]; }).join('').toUpperCase().slice(0,2);
+              return '<div class="partner-card">' +
+                '<div style="display:flex;align-items:center;gap:12px;">' +
+                  '<div class="partner-avatar" style="background:var(--amber);">' + initials + '</div>' +
+                  '<div><div class="partner-name">' + name + '</div><div class="partner-email">You can view their budget</div></div>' +
+                '</div>' +
+                '<span class="badge badge-green">Active</span>' +
+              '</div>';
+            }).join('');
+          });
       });
   }
 
