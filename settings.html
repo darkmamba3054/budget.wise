@@ -258,29 +258,16 @@
     var already = currentLinks.some(function(l){ return l.partner && l.partner.email && l.partner.email.toLowerCase() === email; });
     if (already) { showSearchMsg('This person is already your accountability partner.', 'error'); return; }
 
-    // Find user by searching all active partners and owners in the system
-    // We query accountability_links to find a user with this email
-    // Best approach for plain HTML without RPC: search auth users via a profiles approach
-    // Use a workaround — try to find the user id by checking if they exist in the system
-    db.from('accountability_links')
-      .select('partner:partner_user_id(id, email), owner:owner_user_id(id, email)')
+    showSearchMsg('Searching...', 'success');
+
+    db.rpc('find_user_by_email', { search_email: email })
       .then(function(res) {
-        var allLinks = res.data || [];
-        var found = null;
-
-        // Search through all link users for matching email
-        allLinks.forEach(function(l) {
-          if (l.partner && l.partner.email && l.partner.email.toLowerCase() === email) found = l.partner;
-          if (l.owner   && l.owner.email   && l.owner.email.toLowerCase()   === email) found = l.owner;
-        });
-
-        if (!found) {
-          // Also check if this person is in our own partner list under a different query
+        if (res.error) { showSearchMsg('Error searching: ' + res.error.message, 'error'); return; }
+        if (!res.data || !res.data.length) {
           showSearchMsg('No user found with that email. They may need to sign up first, or use the invite link instead.', 'error');
           return;
         }
-
-        // Add them
+        var found = res.data[0];
         db.from('accountability_links').insert({
           owner_user_id:   currentUser.id,
           partner_user_id: found.id,
