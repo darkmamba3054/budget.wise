@@ -58,6 +58,7 @@
 
     <!-- Sign in panel -->
     <div class="auth-panel active" id="panel-signin">
+      <div id="session-msg" style="display:none;background:var(--amber-l);border:1px solid #f0c88a;border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;color:var(--amber);margin-bottom:14px;">⏱ Your session expired due to inactivity. Please sign in again.</div>
       <div class="form-group">
         <label>Email</label>
         <input type="email" id="si-email" placeholder="you@email.com">
@@ -66,7 +67,13 @@
         <label>Password</label>
         <input type="password" id="si-password" placeholder="Your password">
       </div>
-      <div class="forgot-link"><a onclick="showPanel('forgot')">Forgot password?</a></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <label style="display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="remember-me" checked style="width:15px;height:15px;accent-color:var(--green);cursor:pointer;">
+          <span style="color:var(--text2);">Remember me for 90 days</span>
+        </label>
+        <a onclick="showPanel('forgot')" style="font-size:12px;color:var(--text2);cursor:pointer;">Forgot password?</a>
+      </div>
       <button class="auth-btn" id="si-btn" onclick="doSignIn()">Sign in</button>
       <div class="msg" id="si-msg"></div>
     </div>
@@ -152,13 +159,27 @@
     }
   });
 
+  // Show session expired message if redirected here
+  if (localStorage.getItem('session-expired')) {
+    document.getElementById('session-msg').style.display = 'block';
+    localStorage.removeItem('session-expired');
+  }
+
   function doSignIn() {
-    var email    = document.getElementById('si-email').value.trim();
-    var password = document.getElementById('si-password').value;
-    var btn      = document.getElementById('si-btn');
+    var email      = document.getElementById('si-email').value.trim();
+    var password   = document.getElementById('si-password').value;
+    var rememberMe = document.getElementById('remember-me').checked;
+    var btn        = document.getElementById('si-btn');
     if (!email || !password) { showMsg('si-msg', 'Please fill in all fields.', 'error'); return; }
     btn.disabled    = true;
     btn.textContent = 'Signing in...';
+    if (rememberMe) {
+      localStorage.setItem('cm-remember', '1');
+      localStorage.setItem('cm-remember-until', Date.now() + (90 * 24 * 60 * 60 * 1000));
+    } else {
+      localStorage.removeItem('cm-remember');
+      localStorage.removeItem('cm-remember-until');
+    }
     db.auth.signInWithPassword({ email: email, password: password }).then(function(res) {
       if (res.error) {
         showMsg('si-msg', res.error.message, 'error');
