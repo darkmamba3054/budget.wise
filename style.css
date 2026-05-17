@@ -120,6 +120,18 @@ nav {
   z-index: 200;
 }
 
+/* Invisible bridge so mouse can move from button to dropdown */
+.nav-group::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  height: 8px;
+  display: none;
+}
+
+.nav-group:hover::after { display: block; }
 .nav-group:hover .nav-dropdown { display: block; }
 
 .nav-dropdown a {
@@ -189,6 +201,18 @@ nav {
   z-index: 200;
 }
 
+/* Invisible bridge so mouse can move from button to menu */
+.nav-user-area::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 160px;
+  height: 8px;
+  display: none;
+}
+
+.nav-user-area:hover::after { display: block; }
 .nav-user-area:hover .nav-user-menu { display: block; }
 
 .nav-user-menu a {
